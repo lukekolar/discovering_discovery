@@ -29,30 +29,7 @@ client_access_token <- "A629GZJinyQQJN11vDjRf_3tjx6Dsw5fpH1hdiLZwhpgABHw4yyTpm6n
 ```
 
 ```{r, include = F}
-# Making lyric vectors
 
-One_More_Time.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "One More Time")
-Aerodynamic.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "Aerodynamic")
-Digital_Love.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "Digital Love")
-H_B_F_S.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "Harder, Better, Faster, Stronger")
-Crescendolls.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "Crescendolls")
-Nightvision.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "Nightvision")
-Superheroes.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "Superheroes")
-High_Life.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "High Life")
-Something_About_Us.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "Something About Us")
-Voyager.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "Voyager")
-Veridis_Quo.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "Veridis Quo")
 ```
 
 ```{r, message = F}
@@ -112,6 +89,40 @@ library(rvest)
 
 
 ```{r}
+
+
+```
+
+```{r, echo = F}
+# [B] Storing values...
+
+# lyric vectors:
+
+One_More_Time.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
+                  song_title = "One More Time")
+Aerodynamic.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
+                  song_title = "Aerodynamic")
+Digital_Love.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
+                  song_title = "Digital Love")
+H_B_F_S.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
+                  song_title = "Harder, Better, Faster, Stronger")
+Crescendolls.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
+                  song_title = "Crescendolls")
+Nightvision.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
+                  song_title = "Nightvision")
+Superheroes.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
+                  song_title = "Superheroes")
+High_Life.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
+                  song_title = "High Life")
+Something_About_Us.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
+                  song_title = "Something About Us")
+Voyager.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
+                  song_title = "Voyager")
+Veridis_Quo.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
+                  song_title = "Veridis Quo")
+
+# no longer need these:
+
 One_More_Time.url <- "https://www.whosampled.com/Daft-Punk/One-More-Time/"
 Aerodynamic.url <- "https://www.whosampled.com/Daft-Punk/Aerodynamic/"
 Digital_Love.url <- "https://www.whosampled.com/Daft-Punk/Digital-Love/"
@@ -126,13 +137,19 @@ Veridis_Quo.url <- "https://www.whosampled.com/Daft-Punk/Veridis-Quo/"
 Short_Circuit.url <- "https://www.whosampled.com/Daft-Punk/Short-Circuit/"
 Face_to_Face.url <- "https://www.whosampled.com/Daft-Punk/Face-to-Face/"
 Too_Long.url <- "https://www.whosampled.com/Daft-Punk/Too-Long/"
-```
 
-```{r}
+# section header values (for functions in [C]):
+
 samps.txt <- "Contains samples of"
 sampd.txt <- "Was sampled in"
 cov.txt <- "Was covered in"
 rem.txt <- "Was remixed in"
+
+```
+
+
+```{r, echo = F} 
+# [C]: Functions...
 
 shnum.rename <- function(shnum, sh1, sh2, sh3, sh4){
   if(shnum == 4){
@@ -284,10 +301,7 @@ all.sh <- function(url){
 numextract <- function(string){ 
   str_extract(string, "\\-*\\d+\\.*\\d*")
 }
-```
 
-
-```{r}
 samp.tibble <- function(artist, song){
   url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist, fixed = T),"/", 
                 gsub(" ", "-", song, fixed = T), "/")
@@ -297,10 +311,12 @@ samp.tibble <- function(artist, song){
   samp.tibble
 }
 
+```
 
-samp.tibble(artist = "Daft Punk", song = "Harder, Better, Faster, Stronger")
 
+```{r, echo = F}
 
+samp.tibble(artist = "Kendrick Lamar", song = "GOD.")
 ```
 
 
