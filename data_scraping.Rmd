@@ -370,10 +370,10 @@ get.sampd <- function(artist, song){
   if(pull(samp.tib[2, 2]) == 0){
     sampd <- NA
   }else{ 
-    if(pull(samp.tib[2, 2]) <= 5){
-      n <- pull(samp.tib[2, 2])
-      sampd <- tibble(track = as.vector(html_text(html_nodes(read_html(url),'.playIcon')))[1:n], 
-                      artist = as.vector(html_text(html_nodes(read_html(url),'.trackArtist')))[1:n])
+    if(ceiling(pull(samp.tib[2, 2]) / 16) == 1){
+      url1 <- paste0(url, "/sampled/", "?cp=", "1")
+      sampd <- tibble(track = as.vector(html_text(html_nodes(read_html(url1),'.playIcon'))), 
+                      artist = as.vector(html_text(html_nodes(read_html(url1),'.trackArtist'))))
     }else{
       if(ceiling(pull(samp.tib[2, 2]) / 16) == 1){
         url1 <- paste0(url, "/sampled/", "?cp=", "1")
@@ -421,6 +421,128 @@ get.sampd <- function(artist, song){
     }
   }
   sampd
+}
+
+get.cov <- function(artist, song){
+  samp.tib <- samp.tibble(artist, song)
+  samp.tib <- samp.tib %>% replace_na(list(number = 0))
+  url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist, fixed = T),"/", 
+                gsub(" ", "-", song, fixed = T))
+  if(pull(samp.tib[3, 2]) == 0){
+    cov <- NA
+  }else{ 
+    if(ceiling(pull(samp.tib[3, 2]) / 16) == 1){
+      url1 <- paste0(url, "/covered/", "?cp=", "1")
+      cov <- tibble(track = as.vector(html_text(html_nodes(read_html(url1),'.playIcon'))), 
+                      artist = as.vector(html_text(html_nodes(read_html(url1),'.trackArtist'))))
+    }else{
+      if(ceiling(pull(samp.tib[3, 2]) / 16) == 1){
+        url1 <- paste0(url, "/covered/", "?cp=", "1")
+        cov <- tibble(track = as.vector(html_text(html_nodes(read_html(url1),'.playIcon'))), 
+                        artist = as.vector(html_text(html_nodes(read_html(url1),'.trackArtist'))))
+      }else{
+        if(ceiling(pull(samp.tib[3, 2]) / 16) == 2){
+          url1 <- paste0(url, "/covered/", "?cp=", "1")
+          cov <- tibble(track = as.vector(html_text(html_nodes(read_html(url1),'.playIcon'))), 
+                          artist = as.vector(html_text(html_nodes(read_html(url1),'.trackArtist'))))
+          url2 <- paste0(url, "/covered/", "?cp=", "2")
+          cov <- add_row(cov, track = as.vector(html_text(html_nodes(read_html(url2),'.playIcon'))),
+                          artist = as.vector(html_text(html_nodes(read_html(url2),'.trackArtist'))))
+        }else{
+          if(ceiling(pull(samp.tib[3, 2]) / 16) == 3){
+            url1 <- paste0(url, "/covered/", "?cp=", "1")
+            cov <- tibble(track = as.vector(html_text(html_nodes(read_html(url1),'.playIcon'))), 
+                            artist = as.vector(html_text(html_nodes(read_html(url1),'.trackArtist'))))  
+            url2 <- paste0(url, "/covered/", "?cp=", "2")
+            cov <- add_row(cov, track = as.vector(html_text(html_nodes(read_html(url2),'.playIcon'))),
+                            artist = as.vector(html_text(html_nodes(read_html(url2),'.trackArtist'))))
+            url3 <- paste0(url, "/covered/", "?cp=", "3")
+            cov <- add_row(cov, track = as.vector(html_text(html_nodes(read_html(url3),'.playIcon'))),
+                            artist = as.vector(html_text(html_nodes(read_html(url3),'.trackArtist'))))
+          }else{
+            if(ceiling(pull(samp.tib[3, 2]) / 16) == 4){
+              url1 <- paste0(url, "/covered/", "?cp=", "1")
+              cov <- tibble(track = as.vector(html_text(html_nodes(read_html(url1),'.playIcon'))), 
+                              artist = as.vector(html_text(html_nodes(read_html(url1),'.trackArtist'))))
+              url2 <- paste0(url, "/covered/", "?cp=", "2")
+              cov <- add_row(cov, track = as.vector(html_text(html_nodes(read_html(url2),'.playIcon'))),
+                              artist = as.vector(html_text(html_nodes(read_html(url2),'.trackArtist'))))
+              url3 <- paste0(url, "/covered/", "?cp=", "3")
+              cov <- add_row(cov, track = as.vector(html_text(html_nodes(read_html(url3),'.playIcon'))),
+                              artist = as.vector(html_text(html_nodes(read_html(url3),'.trackArtist'))))
+              url4 <- paste0(url, "/covered/", "?cp=", "4")
+              cov <- add_row(cov, track = as.vector(html_text(html_nodes(read_html(url4),'.playIcon'))),
+                              artist = as.vector(html_text(html_nodes(read_html(url4),'.trackArtist'))))
+            }else{
+              print("more than 4 pages...")
+            }
+          }
+        }
+      }
+    }
+  }
+  cov
+}
+
+get.rem <- function(artist, song){
+  samp.tib <- samp.tibble(artist, song)
+  samp.tib <- samp.tib %>% replace_na(list(number = 0))
+  url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist, fixed = T),"/", 
+                gsub(" ", "-", song, fixed = T))
+  if(pull(samp.tib[4, 2]) == 0){
+    rem <- NA
+  }else{ 
+    if(ceiling(pull(samp.tib[4, 2]) / 16) == 1){
+      url1 <- paste0(url, "/remixed/", "?cp=", "1")
+      rem <- tibble(track = as.vector(html_text(html_nodes(read_html(url1),'.playIcon'))), 
+                      artist = as.vector(html_text(html_nodes(read_html(url1),'.trackArtist'))))
+    }else{
+      if(ceiling(pull(samp.tib[4, 2]) / 16) == 1){
+        url1 <- paste0(url, "/remixed/", "?cp=", "1")
+        rem <- tibble(track = as.vector(html_text(html_nodes(read_html(url1),'.playIcon'))), 
+                        artist = as.vector(html_text(html_nodes(read_html(url1),'.trackArtist'))))
+      }else{
+        if(ceiling(pull(samp.tib[4, 2]) / 16) == 2){
+          url1 <- paste0(url, "/remixed/", "?cp=", "1")
+          rem <- tibble(track = as.vector(html_text(html_nodes(read_html(url1),'.playIcon'))), 
+                          artist = as.vector(html_text(html_nodes(read_html(url1),'.trackArtist'))))
+          url2 <- paste0(url, "/remixed/", "?cp=", "2")
+          rem <- add_row(rem, track = as.vector(html_text(html_nodes(read_html(url2),'.playIcon'))),
+                          artist = as.vector(html_text(html_nodes(read_html(url2),'.trackArtist'))))
+        }else{
+          if(ceiling(pull(samp.tib[4, 2]) / 16) == 3){
+            url1 <- paste0(url, "/remixed/", "?cp=", "1")
+            rem <- tibble(track = as.vector(html_text(html_nodes(read_html(url1),'.playIcon'))), 
+                            artist = as.vector(html_text(html_nodes(read_html(url1),'.trackArtist'))))  
+            url2 <- paste0(url, "/remixed/", "?cp=", "2")
+            rem <- add_row(rem, track = as.vector(html_text(html_nodes(read_html(url2),'.playIcon'))),
+                            artist = as.vector(html_text(html_nodes(read_html(url2),'.trackArtist'))))
+            url3 <- paste0(url, "/remixed/", "?cp=", "3")
+            rem <- add_row(rem, track = as.vector(html_text(html_nodes(read_html(url3),'.playIcon'))),
+                            artist = as.vector(html_text(html_nodes(read_html(url3),'.trackArtist'))))
+          }else{
+            if(ceiling(pull(samp.tib[4, 2]) / 16) == 4){
+              url1 <- paste0(url, "/remixed/", "?cp=", "1")
+              rem <- tibble(track = as.vector(html_text(html_nodes(read_html(url1),'.playIcon'))), 
+                              artist = as.vector(html_text(html_nodes(read_html(url1),'.trackArtist'))))
+              url2 <- paste0(url, "/remixed/", "?cp=", "2")
+              rem <- add_row(rem, track = as.vector(html_text(html_nodes(read_html(url2),'.playIcon'))),
+                              artist = as.vector(html_text(html_nodes(read_html(url2),'.trackArtist'))))
+              url3 <- paste0(url, "/remixed/", "?cp=", "3")
+              rem <- add_row(rem, track = as.vector(html_text(html_nodes(read_html(url3),'.playIcon'))),
+                              artist = as.vector(html_text(html_nodes(read_html(url3),'.trackArtist'))))
+              url4 <- paste0(url, "/remixed/", "?cp=", "4")
+              rem <- add_row(rem, track = as.vector(html_text(html_nodes(read_html(url4),'.playIcon'))),
+                              artist = as.vector(html_text(html_nodes(read_html(url4),'.trackArtist'))))
+            }else{
+              print("more than 4 pages...")
+            }
+          }
+        }
+      }
+    }
+  }
+  rem
 }
 
 ```
@@ -431,74 +553,22 @@ samp.tibble(artist = "Daft Punk", song = "One More Time")
 
 
 ```{r}
-
-get.sampd <- function(artist, song){
-  samp.tib <- samp.tibble(artist, song)
-  samp.tib <- samp.tib %>% replace_na(list(number = 0))
-  url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist, fixed = T),"/", 
-                gsub(" ", "-", song, fixed = T))
-  if(pull(samp.tib[2, 2]) == 0){
-    sampd <- NA
-  }else{ 
-    if(pull(samp.tib[2, 2]) <= 5){
-      n <- pull(samp.tib[2, 2])
-      sampd <- tibble(track = as.vector(html_text(html_nodes(read_html(url),'.playIcon')))[1:n], 
-                      artist = as.vector(html_text(html_nodes(read_html(url),'.trackArtist')))[1:n])
-    }else{
-      if(ceiling(pull(samp.tib[2, 2]) / 16) == 1){
-        url1 <- paste0(url, "/sampled/", "?cp=", "1")
-        sampd <- tibble(track = as.vector(html_text(html_nodes(read_html(url1),'.playIcon'))), 
-                        artist = as.vector(html_text(html_nodes(read_html(url1),'.trackArtist'))))
-      }else{
-        if(ceiling(pull(samp.tib[2, 2]) / 16) == 2){
-          url1 <- paste0(url, "/sampled/", "?cp=", "1")
-          sampd <- tibble(track = as.vector(html_text(html_nodes(read_html(url1),'.playIcon'))), 
-                          artist = as.vector(html_text(html_nodes(read_html(url1),'.trackArtist'))))
-          url2 <- paste0(url, "/sampled/", "?cp=", "2")
-          sampd <- add_row(sampd, track = as.vector(html_text(html_nodes(read_html(url2),'.playIcon'))),
-                          artist = as.vector(html_text(html_nodes(read_html(url2),'.trackArtist'))))
-        }else{
-          if(ceiling(pull(samp.tib[2, 2]) / 16) == 3){
-            url1 <- paste0(url, "/sampled/", "?cp=", "1")
-            sampd <- tibble(track = as.vector(html_text(html_nodes(read_html(url1),'.playIcon'))), 
-                            artist = as.vector(html_text(html_nodes(read_html(url1),'.trackArtist'))))  
-            url2 <- paste0(url, "/sampled/", "?cp=", "2")
-            sampd <- add_row(sampd, track = as.vector(html_text(html_nodes(read_html(url2),'.playIcon'))),
-                            artist = as.vector(html_text(html_nodes(read_html(url2),'.trackArtist'))))
-            url3 <- paste0(url, "/sampled/", "?cp=", "3")
-            sampd <- add_row(sampd, track = as.vector(html_text(html_nodes(read_html(url3),'.playIcon'))),
-                            artist = as.vector(html_text(html_nodes(read_html(url3),'.trackArtist'))))
-          }else{
-            if(ceiling(pull(samp.tib[2, 2]) / 16) == 4){
-              url1 <- paste0(url, "/sampled/", "?cp=", "1")
-              sampd <- tibble(track = as.vector(html_text(html_nodes(read_html(url1),'.playIcon'))), 
-                              artist = as.vector(html_text(html_nodes(read_html(url1),'.trackArtist'))))
-              url2 <- paste0(url, "/sampled/", "?cp=", "2")
-              sampd <- add_row(sampd, track = as.vector(html_text(html_nodes(read_html(url2),'.playIcon'))),
-                              artist = as.vector(html_text(html_nodes(read_html(url2),'.trackArtist'))))
-              url3 <- paste0(url, "/sampled/", "?cp=", "3")
-              sampd <- add_row(sampd, track = as.vector(html_text(html_nodes(read_html(url3),'.playIcon'))),
-                              artist = as.vector(html_text(html_nodes(read_html(url3),'.trackArtist'))))
-              url4 <- paste0(url, "/sampled/", "?cp=", "4")
-              sampd <- add_row(sampd, track = as.vector(html_text(html_nodes(read_html(url4),'.playIcon'))),
-                              artist = as.vector(html_text(html_nodes(read_html(url4),'.trackArtist'))))
-            }else{
-              print("more than 4 pages...")
-            }
-          }
-        }
-      }
-    }
-  }
-  sampd
-}
-
-```
-
-
-```{r}
 get.samps(artist = "Daft Punk", song = "One More Time")
 get.sampd(artist = "Daft Punk", song = "One More Time")
+get.cov(artist = "Daft Punk", song = "One More Time")
+rem <- get.rem(artist = "Daft Punk", song = "One More Time")
+
+
+rem$artist <- gsub("\n\t\t\t", "", rem$artist, fixed = T)
+rem$artist <- sub("by ", "", rem$artist, fixed = T)
+rem <- separate(rem, artist, into = c("artist", "year"), "\\ (")
+rem$year <- str_sub(rem$artist,-6,-1)
+
+rem$artist <- str_sub(rem$artist, 2, 3)
+
+
+rem
+
 ```
 
 ```{r}
