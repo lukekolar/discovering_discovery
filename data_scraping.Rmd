@@ -22,11 +22,14 @@ library(rvest)
 
 ```{r, include = F}
 # 'Genius'-specific packages
-
 library(geniusr)
 genius_token()
+genius.token <- "A629GZJinyQQJN11vDjRf_3tjx6Dsw5fpH1hdiLZwhpgABHw4yyTpm6nFQj592p8"
 
-client_access_token <- "A629GZJinyQQJN11vDjRf_3tjx6Dsw5fpH1hdiLZwhpgABHw4yyTpm6nFQj592p8"
+# 'Discogs'-specific packages
+library(discogger)
+discogs_api_token()
+discogs.token <- "UqigHPcLrZSSnZuebGkYFAMdYWBWRzvtfHsgtkZK"
 ```
 
 ```{r, include = F}
@@ -602,47 +605,11 @@ song <- "Harder, Better, Faster, Stronger"
 get.samps(artist, song)
 get.sampd(artist, song)
 get.cov(artist, song)
-get.rem(artist, song)
+pull(get.rem(artist, song)[2, 2])
 
 ```
+
 
 ```{r}
-
-url <- One_More_Time.url
-n <- pull(samp.tib[1, 2])
-samps <- tibble(track = as.vector(html_text(html_nodes(read_html(url),'.playIcon')))[[1:n]], 
-                artist = as.vector(html_text(html_nodes(read_html(url),'.trackArtist')))[[1:n]])
-
-samps
 ```
-
-```{r}
-samps.url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist, fixed = T),"/", 
-                    gsub(" ", "-", song, fixed = T))
-sampd.url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist, fixed = T),"/", 
-                    gsub(" ", "-", song, fixed = T), "/sampled/", "?cp=", page)
-cov.url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist, fixed = T),"/", 
-                    gsub(" ", "-", song, fixed = T), "/covered/", "?cp=", page)
-rem.url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist, fixed = T),"/", 
-                    gsub(" ", "-", song, fixed = T))
-
-
-sampd.rest <- paste0("/sampled/", "?cp=", page)
-cov.rest <- paste0("/covered/", "?cp=", page)
-rem.rest <- paste0("/remixed/", "?cp=", page)
-  
-  
-  sampd.url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist, fixed = T),"/", 
-                gsub(" ", "-", song, fixed = T), "/sampled/", "?cp=", page)
-  cov.url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist, fixed = T),"/", 
-                gsub(" ", "-", song, fixed = T), "/covered/", "?cp=", page)
-  rem.url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist, fixed = T),"/", 
-                gsub(" ", "-", song, fixed = T), "/remixed/", "?cp=", page)
-
-
-
-
-ceiling(10)
-```
-
 
