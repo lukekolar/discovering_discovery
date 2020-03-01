@@ -596,7 +596,12 @@ samp.tibble(artist = "Daft Punk", song = "One More Time")
 
 ```{r}
 artist <- "Daft Punk"
-song <- "Harder, Better, Faster, Stronger"
+track <- "One More Time"
+
+get.samps(artist, song)
+s2 <- get.sampd(artist, song) %>% mutate(type = "sampled")
+s3 <- get.cov(artist, song) %>% mutate(type = "cover")
+s4 <- get.rem(artist, song) %>% mutate(type = "remix")
 
 s1 <- get.samps(artist, song) %>% mutate(type = "samples")
 s2 <- get.sampd(artist, song) %>% mutate(type = "sampled")
@@ -613,9 +618,51 @@ rem.cov <- s3 %>%
 
 
 ```{r}
-result <- discogs_search(list(track = "WorkItHarder", artist = "Radium"), n_results = 1)
+result <- discogs_search(list(track = track, artist = artist), n_results = 1)
 
 result
+
+tib <- get.samps(artist, track)
+nrow(tib)
+
+style <- vector("character", nrow(tib))
+country <- vector("character", nrow(tib))
+genre <- vector("character", nrow(tib))
+
+tib[1, "artist"]
+
+for(k in 1:nrow(tib)){
+  track <- tib[k, "track"]
+  artist <- tib[k, "artist"] 
+  result <- discogs_search(list(track = track, artist = artist), n_results = 1)
+  style[k] <- result[[1]]$style[[1:n]]
+  country[k] <- result[[1]]$country[[1:n]]
+  genre[k] <- result[[1]]$genre[[1:n]]
+}
+
+
+for(row in 1:nrow(tib)){
+  track <- tib[row, "track"]
+  artist <- tib[row, "artist"] 
+  result <- discogs_search(list(track = track, artist = artist), n_results = 1)
+    if(exists(result[[1]]$style[[1]])){
+      style = result[[1]]$style[[1:n]]
+    }else{
+      style = NA
+    }
+    if(exists(result[[1]]$country[[1]])){
+      country = result[[1]]$country[[1:n]]
+    }else{
+      country = NA
+    }
+    if(exists(result[[1]]$genre[[1]])){
+      genre = result[[1]]$genre[[1:n]]
+    }else{
+      genre = NA
+    }
+}
+
+
 
 result[[1]]$style[[1:n]]
 result[[1]]$country[[1:n]]
