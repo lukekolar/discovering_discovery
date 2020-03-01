@@ -32,10 +32,6 @@ discogs_api_token()
 discogs.token <- "UqigHPcLrZSSnZuebGkYFAMdYWBWRzvtfHsgtkZK"
 ```
 
-```{r, include = F}
-
-```
-
 ```{r, message = F}
 # set lexicon
 bing <- get_sentiments("bing")
@@ -602,14 +598,34 @@ samp.tibble(artist = "Daft Punk", song = "One More Time")
 artist <- "Daft Punk"
 song <- "Harder, Better, Faster, Stronger"
 
-get.samps(artist, song)
-get.sampd(artist, song)
-get.cov(artist, song)
-pull(get.rem(artist, song)[2, 2])
+s1 <- get.samps(artist, song) %>% mutate(type = "samples")
+s2 <- get.sampd(artist, song) %>% mutate(type = "sampled")
+s3 <- get.cov(artist, song) %>% mutate(type = "cover")
+s4 <- get.rem(artist, song) %>% mutate(type = "remix")
+
+ 
+rem.cov <- s3 %>% 
+  full_join(s4)
+
+
 
 ```
 
 
 ```{r}
+result <- discogs_search(list(track = "WorkItHarder", artist = "Radium"), n_results = 1)
+
+result
+
+result[[1]]$style[[1:n]]
+result[[1]]$country[[1:n]]
+result[[1]]$genre[[1:n]]
+
+
+
 ```
+
+
+
+
 
