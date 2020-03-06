@@ -5,6 +5,14 @@ date: "2/21/2020"
 output: html_document
 ---
 
+I retrieved my data from [Genius](https://genius.com/), [whosampled.com](https://whosampled.com) and [Discogs](discogs.com). The former was easy, as there are packages that make scraping simple, but the latter two were / are more difficult...
+
+The difficulty of [whosampled.com](https://whosampled.com) comes from both the fact that it's not coder-friendly (it doesn't have an API key system, like the other two), and that its website is inconsistent. I wrote several functions to scrape the website using CSS selectors, and these functions had to include dozens of if / else statements because website URLs weren't always the same format for different sub-pages, etc. For instance, a song's samples are only listen on a separate page if there are more than 5. Also, not every song has a listed genre, and CSS selectors aren't linked to each other, so I decided to run the song titles / artists I found on whosampled through another music database...
+
+[Discogs](discogs.com) is the largest Internet database, and I was able to find a simple package to replicate its search function. The search function prints a "discogs dataframe," which is super strange to work with. So far, I've been able to extract genres and styles for songs through it, since it's partly in list format. However, I'm still working on a method to do this for every song, and I'm looking into how I can have the code recognize when a song isn't in the Discogs database (because it simple prints a blank "discogs dataframe). 
+
+Overall, I've made a lot of progress, and I'm very proud of it. There's still much work to do, but I'm confident that I'm working through it at a pace that will allow me to create an awesome shiny app, much like those of my inspiration for the project, [David Smale](https://davidsmale.netlify.com/portfolio/).
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -32,7 +40,7 @@ discogs_api_token()
 discogs.token <- "UqigHPcLrZSSnZuebGkYFAMdYWBWRzvtfHsgtkZK"
 ```
 
-```{r, message = F}
+```{r, message = F, include = F}
 # set lexicon
 bing <- get_sentiments("bing")
 
@@ -72,7 +80,7 @@ sentiment %>%
 
 ```
 
-```{r, echo = F}
+```{r, echo = F, include = F}
 # [B] Storing values...
 
 # lyric vectors:
@@ -137,7 +145,7 @@ rem.txt <- "Was remixed in"
 ```
 
 
-```{r, echo = F} 
+```{r, echo = F, include = F} 
 # [C]: Functions...
 
 shnum.rename <- function(shnum, sh1, sh2, sh3, sh4){
@@ -589,14 +597,16 @@ get.rem <- function(artist, song){
 
 ```
 
-```{r}
-samp.tibble(artist = "Daft Punk", song = "One More Time")
+```{r, include = F}
+samp.tibble(artist = "Drake", song = "God's Plan")
+
+get.cov(artist = "Drake", song = "God's Plan")
 ```
 
 
-```{r}
+```{r, include = F}
 artist <- "Daft Punk"
-track <- "One More Time"
+song <- "One More Time"
 
 get.samps(artist, song)
 s2 <- get.sampd(artist, song) %>% mutate(type = "sampled")
@@ -617,62 +627,42 @@ rem.cov <- s3 %>%
 ```
 
 
-```{r}
-result <- discogs_search(list(track = track, artist = artist), n_results = 1)
+```{r, include = F}
 
-result
-
-tib <- get.samps(artist, track)
-nrow(tib)
-
-style <- vector("character", nrow(tib))
-country <- vector("character", nrow(tib))
-genre <- vector("character", nrow(tib))
-
-tib[1, "artist"]
-
-for(k in 1:nrow(tib)){
-  track <- tib[k, "track"]
-  artist <- tib[k, "artist"] 
-  result <- discogs_search(list(track = track, artist = artist), n_results = 1)
-  style[k] <- result[[1]]$style[[1:n]]
-  country[k] <- result[[1]]$country[[1:n]]
-  genre[k] <- result[[1]]$genre[[1:n]]
+discogs_info.tib <- function(artist, song){
+  result <- discogs_search(list(track = song, artist = artist), n_results = 1)
+  tibble(song = song,
+         artist = artist,
+         style = result[[1]]$style,
+         country = unlist(result[[1]]$country),
+         genre = result[[1]]$genre)
 }
 
 
-for(row in 1:nrow(tib)){
-  track <- tib[row, "track"]
-  artist <- tib[row, "artist"] 
-  result <- discogs_search(list(track = track, artist = artist), n_results = 1)
-    if(exists(result[[1]]$style[[1]])){
-      style = result[[1]]$style[[1:n]]
-    }else{
-      style = NA
-    }
-    if(exists(result[[1]]$country[[1]])){
-      country = result[[1]]$country[[1:n]]
-    }else{
-      country = NA
-    }
-    if(exists(result[[1]]$genre[[1]])){
-      genre = result[[1]]$genre[[1:n]]
-    }else{
-      genre = NA
-    }
-}
+x <- get.samps(artist, song)
 
+discogs_info.tib(pull(x[1,2]), pull(x[1,1]))
 
-
-result[[1]]$style[[1:n]]
-result[[1]]$country[[1:n]]
-result[[1]]$genre[[1:n]]
-
-
+x[1,3]
 
 ```
 
+```{r}
+# Example of whosampled and Discogs functions I've written:
 
+artist <- "Daft Punk"
+song <- "One More Time"
+
+samples <- get.samps(artist, song)
+samples
+
+info <- discogs_info.tib(pull(x[1,2]), pull(x[1,1]))
+info
+
+genres <- unlist(info$genre)
+genres
+
+```
 
 
 
