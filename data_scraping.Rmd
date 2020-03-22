@@ -749,7 +749,7 @@ europe.plot <- ggplot(music.used.mapped, aes(fill = num.used)) + geom_sf() +
        subtitle = "Where European artists have sampled, \nremixed, or covered 'Discovery'",
        caption = "Source: WhoSampled, Genius, Discogs") +
   theme(text = element_text(family = "Courier"),
-        plot.title = element_text(hjust = 0.5, size = 12, face = "bold"),
+        plot.title = element_text(hjust = 0.5, size = 1, face = "bold"),
         plot.subtitle = element_text(hjust = 0.5, size = 8),
         plot.caption = element_text(size = 7, face = "italic"),
         legend.title = element_text(size = 9)
