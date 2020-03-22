@@ -756,11 +756,12 @@ europe.plot <- ggplot(music.used.mapped, aes(fill = num.used)) + geom_sf() +
         )
 europe.plot
 
+ggsave("discovery_graphics/map_graphics/europe_credits.png")
+
 ```
 
 
-
-```{r}
+```{r, eval = F}
 
 library(spotifyr)
 
