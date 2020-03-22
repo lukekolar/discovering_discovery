@@ -20,27 +20,44 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, message = F, include = F}
 # Initial library loading
 
-library(tidyverse)
-library(janitor)
-library(tidytext)
-library(textdata)
-library(stringr)
+library(usethis)      # for setting API keys
+library(knitr)
+library(janitor)      # cleaning data
+library(tidytext)     # helpful with 'geniusr' package
+library(textdata)       # same as above
+library(stringr)      # modifying character values
 library(rvest)
+library(shiny)
+library(raster)
+library(spDataLarge)
+library(spData)
+library(rgeos)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(sf)
+library(tidyverse)
+
 ```
 
 ```{r, include = F}
 # 'Genius'-specific packages
 library(geniusr)
+Sys.setenv(GENIUS_API_TOKEN = 'A629GZJinyQQJN11vDjRf_3tjx6Dsw5fpH1hdiLZwhpgABHw4yyTpm6nFQj592p8')
 genius_token()
-genius.token <- "A629GZJinyQQJN11vDjRf_3tjx6Dsw5fpH1hdiLZwhpgABHw4yyTpm6nFQj592p8"
 
 # 'Discogs'-specific packages
 library(discogger)
+Sys.setenv(DISCOGS_API_TOKEN = 'UqigHPcLrZSSnZuebGkYFAMdYWBWRzvtfHsgtkZK')
 discogs_api_token()
-discogs.token <- "UqigHPcLrZSSnZuebGkYFAMdYWBWRzvtfHsgtkZK"
+
+# 'Spotify'-specific packages
+library(spotifyr)
+Sys.setenv(SPOTIFY_CLIENT_ID = '9ffd8734c372455faf4f66524809478d')
+Sys.setenv(SPOTIFY_CLIENT_SECRET = 'f7d542ebdfa14c318ef9208b877ecd61')
+get_spotify_access_token()
 ```
 
-```{r, message = F, include = F}
+```{r, message = F, echo = F, include = T}
 # set lexicon
 bing <- get_sentiments("bing")
 
@@ -117,23 +134,6 @@ tracklist <- c("One More Time", "Aerodynamic", "Digital Love",
                "Something About Us", "Voyager", "Veridis Quo",
                "Short Circuit", "Face to Face", "Too Long")
 samples.tab <- tibble(tracks = as.vector(tracklist))
-
-# no longer need these:
-
-One_More_Time.url <- "https://www.whosampled.com/Daft-Punk/One-More-Time/"
-Aerodynamic.url <- "https://www.whosampled.com/Daft-Punk/Aerodynamic/"
-Digital_Love.url <- "https://www.whosampled.com/Daft-Punk/Digital-Love/"
-H_B_F_S.url <- "https://www.whosampled.com/Daft-Punk/Harder,-Better,-Faster,-Stronger/"
-Crescendolls.url <- "https://www.whosampled.com/Daft-Punk/Crescendolls/"
-Nightvision.url <- "https://www.whosampled.com/Daft-Punk/Nightvision/"
-Superheroes.url <- "https://www.whosampled.com/Daft-Punk/Superheroes/"
-High_Life.url <- "https://www.whosampled.com/Daft-Punk/High-Life/"
-Something_About_Us.url <- "https://www.whosampled.com/Daft-Punk/Something-About-Us/"
-Voyager.url <- "https://www.whosampled.com/Daft-Punk/Voyager/"
-Veridis_Quo.url <- "https://www.whosampled.com/Daft-Punk/Veridis-Quo/"
-Short_Circuit.url <- "https://www.whosampled.com/Daft-Punk/Short-Circuit/"
-Face_to_Face.url <- "https://www.whosampled.com/Daft-Punk/Face-to-Face/"
-Too_Long.url <- "https://www.whosampled.com/Daft-Punk/Too-Long/"
 
 # section header values (for functions in [C]):
 
@@ -367,14 +367,16 @@ get.samps <- function(artist, song){
     }
   }
   if(!is.tibble(samps)){
-    print("None.")
+    samps
   }else{
     samps <- samps %>%
       mutate(artist = gsub("\n\t\t\t", "", artist, fixed = T),
-      artist = sub("by ", "", artist, fixed = T),
-      year = str_sub(artist,-6,-1),
-      year = as.numeric(str_sub(year, 2, 5)),
-      artist = str_sub(artist, 0, nchar(artist) - 7))
+             artist = sub("by ", "", artist, fixed = T),
+             year = str_sub(artist,-6,-1),
+             year = as.numeric(str_sub(year, 2, 5)),
+             artist = str_sub(artist, 0, nchar(artist) - 7)) %>% 
+      mutate(artist = gsub("feat.*","",artist)) %>% 
+      mutate(type = "samples")
     samps
   }
 }
@@ -388,7 +390,7 @@ get.sampd <- function(artist, song){
     sampd <- NA
   }else{ 
     if(pull(samp.tib[2, 2]) <= 5){
-      n1 <- pull(samp.tib[1, 2]) + 1
+      n1 <- ifelse(pull(samp.tib[1, 2]) >= 5, 6, pull(samp.tib[1, 2]) + 1)
       n2 <- n1 + pull(samp.tib[2, 2]) - 1
       sampd <- tibble(track = as.vector(html_text(html_nodes(read_html(url),'.playIcon')))[n1:n2], 
                       artist = as.vector(html_text(html_nodes(read_html(url),'.trackArtist')))[n1:n2])
@@ -439,14 +441,16 @@ get.sampd <- function(artist, song){
     }
   }
   if(!is.tibble(sampd)){
-    print("None.")
+    sampd
   }else{
     sampd <- sampd %>%
       mutate(artist = gsub("\n\t\t\t", "", artist, fixed = T),
-      artist = sub("by ", "", artist, fixed = T),
-      year = str_sub(artist,-6,-1),
-      year = as.numeric(str_sub(year, 2, 5)),
-      artist = str_sub(artist, 0, nchar(artist) - 7))
+             artist = sub("by ", "", artist, fixed = T),
+             year = str_sub(artist,-6,-1),
+             year = as.numeric(str_sub(year, 2, 5)),
+             artist = str_sub(artist, 0, nchar(artist) - 7)) %>% 
+      mutate(artist = gsub("feat.*","",artist)) %>% 
+      mutate(type = "sampled")
     sampd
   }
 }
@@ -460,7 +464,8 @@ get.cov <- function(artist, song){
     cov <- NA
   }else{ 
     if(pull(samp.tib[3, 2]) <= 5){
-      n1 <- pull(samp.tib[1, 2]) + pull(samp.tib[2, 2]) + 1
+      n1 <- ifelse(pull(samp.tib[1, 2]) >= 5, 5, pull(samp.tib[1, 2])) + 
+            ifelse(pull(samp.tib[2, 2]) >= 5, 6, pull(samp.tib[2, 2]) + 1)
       n2 <- n1 + pull(samp.tib[3, 2]) - 1
       cov <- tibble(track = as.vector(html_text(html_nodes(read_html(url),'.playIcon')))[n1:n2], 
                       artist = as.vector(html_text(html_nodes(read_html(url),'.trackArtist')))[n1:n2])
@@ -511,14 +516,16 @@ get.cov <- function(artist, song){
     }
   }
   if(!is.tibble(cov)){
-    print("None.")
+    cov
   }else{
     cov <- cov %>%
       mutate(artist = gsub("\n\t\t\t", "", artist, fixed = T),
-      artist = sub("by ", "", artist, fixed = T),
-      year = str_sub(artist,-6,-1),
-      year = as.numeric(str_sub(year, 2, 5)),
-      artist = str_sub(artist, 0, nchar(artist) - 7))
+             artist = sub("by ", "", artist, fixed = T),
+             year = str_sub(artist,-6,-1),
+             year = as.numeric(str_sub(year, 2, 5)),
+             artist = str_sub(artist, 0, nchar(artist) - 7)) %>% 
+      mutate(artist = gsub("feat.*","",artist)) %>% 
+      mutate(type = "cover")
     cov
   }
 }
@@ -532,7 +539,9 @@ get.rem <- function(artist, song){
     rem <- NA
   }else{ 
     if(pull(samp.tib[4, 2]) <= 5){
-      n1 <- pull(samp.tib[1, 2]) + pull(samp.tib[2, 2]) + pull(samp.tib[3, 2]) + 1
+      n1 <- ifelse(pull(samp.tib[1, 2]) >= 5, 5, pull(samp.tib[1, 2])) + 
+            ifelse(pull(samp.tib[2, 2]) >= 5, 5, pull(samp.tib[2, 2])) +
+            ifelse(pull(samp.tib[3, 2]) >= 5, 6, pull(samp.tib[3, 2]) + 1)
       n2 <- n1 + pull(samp.tib[4, 2]) - 1
       rem <- tibble(track = as.vector(html_text(html_nodes(read_html(url),'.playIcon')))[n1:n2], 
                       artist = as.vector(html_text(html_nodes(read_html(url),'.trackArtist')))[n1:n2])
@@ -583,78 +592,98 @@ get.rem <- function(artist, song){
     }
   }
   if(!is.tibble(rem)){
-    print("None.")
+    rem
   }else{
     rem <- rem %>%
       mutate(artist = gsub("\n\t\t\t", "", artist, fixed = T),
-      artist = sub("by ", "", artist, fixed = T),
-      year = str_sub(artist,-6,-1),
-      year = as.numeric(str_sub(year, 2, 5)),
-      artist = str_sub(artist, 0, nchar(artist) - 7))
+             artist = sub("by ", "", artist, fixed = T),
+             year = str_sub(artist,-6,-1),
+             year = as.numeric(str_sub(year, 2, 5)),
+             artist = str_sub(artist, 0, nchar(artist) - 7))  %>% 
+      mutate(artist = gsub("feat.*","",artist)) %>% 
+      mutate(type = "remix")
     rem
   }
 }
 
-```
+all.rel <- function(artist, song){
+  s1 <- get.samps(artist, song) 
+  s2 <- get.sampd(artist, song)
+  s3 <- get.cov(artist, song)
+  s4 <- get.rem(artist, song)
 
-```{r, include = F}
-samp.tibble(artist = "Drake", song = "God's Plan")
-
-get.cov(artist = "Drake", song = "God's Plan")
-```
-
-
-```{r, include = F}
-artist <- "Daft Punk"
-song <- "One More Time"
-
-get.samps(artist, song)
-s2 <- get.sampd(artist, song) %>% mutate(type = "sampled")
-s3 <- get.cov(artist, song) %>% mutate(type = "cover")
-s4 <- get.rem(artist, song) %>% mutate(type = "remix")
-
-s1 <- get.samps(artist, song) %>% mutate(type = "samples")
-s2 <- get.sampd(artist, song) %>% mutate(type = "sampled")
-s3 <- get.cov(artist, song) %>% mutate(type = "cover")
-s4 <- get.rem(artist, song) %>% mutate(type = "remix")
-
- 
-rem.cov <- s3 %>% 
-  full_join(s4)
-
-
-
-```
-
-
-```{r, include = F}
-
-discogs_info.tib <- function(artist, song){
-  result <- discogs_search(list(track = song, artist = artist), n_results = 1)
-  tibble(song = song,
-         artist = artist,
-         style = result[[1]]$style,
-         country = unlist(result[[1]]$country),
-         genre = result[[1]]$genre)
+  all.tib <- tibble(track = c("filler"), artist = c("filler"), year = c("filler"), type = c("filler")) 
+  all.tib <- if(is.tibble(s1)){rbind(all.tib, s1)}else{all.tib}
+  all.tib <- if(is.tibble(s2)){rbind(all.tib, s2)}else{all.tib}
+  all.tib <- if(is.tibble(s3)){rbind(all.tib, s3)}else{all.tib}
+  all.tib <- if(is.tibble(s4)){rbind(all.tib, s4)}else{all.tib}
+  
+  all.tib %>% filter(!track == "filler")
+    
 }
 
+is.discogs.error <- function(x){
+  tryCatch({x},
+           warning = function(w){FALSE},
+           error = function(e){TRUE},
+           finally = 
+           ) 
+}
 
-x <- get.samps(artist, song)
+discogs_info.tib <- function(artist, song){
+  result <- 
+    ifelse(!is.list(is.discogs.error(discogs_search(list(track = song, artist = artist), n_results = 1))),
+           ifelse(!is.list(is.discogs.error(discogs_search(list(track = song), n_results = 1))), 
+                  NA, discogs_search(list(track = song), n_results = 1)),  
+           ifelse(length(discogs_search(list(track = song, artist = artist), n_results = 1)[[1]]) > 0,
+                  discogs_search(list(track = song, artist = artist), n_results = 1),
+           ifelse(length(discogs_search(list(track = song, artist = gsub("and.*","",artist)), n_results = 1)[[1]]) > 0,
+                  discogs_search(list(track = song, artist = gsub("and.*","",artist)), n_results = 1),
+                  NA)))
+  tibble(song = song,
+         artist = artist,
+         style = ifelse(is.na(result), NA, result[[1]]$style),
+         country = ifelse(is.na(result), NA, unlist(result[[1]]$country)),
+         genre = ifelse(is.na(result), NA, result[[1]]$genre))
+}
 
-discogs_info.tib(pull(x[1,2]), pull(x[1,1]))
+all.rel.album.info <- function(artist, album){
+  tracklist <- get_album_tracklist_search(artist_name = artist,
+                                          album_name = album) %>% 
+               select(song_number, song_title) %>% 
+               rename(track.num = song_number,
+                      song = song_title) %>% 
+               mutate(main.artist = artist)
+  
+  all.rel.album.info.tib <- map2_dfr(as.vector(tracklist$main.artist), 
+                                     as.vector(tracklist$song),
+                                     ~all.rel.song.info(artist = .x,
+                                                        song = .y))
+  all.rel.album.info.tib
+}  
 
-x[1,3]
+all.rel.song.info <- function(artist, song){
+  all.rell.song <- all.rel(artist, song) %>% mutate(main.song = song)
+  types.col <- all.rell.song %>% select(type)
+  
+  all.rel.song.info.tib <- map2_dfr(as.vector(all.rell.song$artist), 
+                                    as.vector(all.rell.song$track), ~discogs_info.tib(artist = .x, 
+                                                                                      song = .y)) %>% 
+                           cbind(types.col) %>% 
+                           mutate(main.song = all.rell.song$main.song)
+  all.rel.song.info.tib
+}
 
 ```
 
-```{r}
+```{r, include = F}
 # Example of whosampled and Discogs functions I've written:
 
 artist <- "Daft Punk"
 song <- "One More Time"
 
-samples <- get.samps(artist, song)
-samples
+x <- get.samps(artist, song)
+x
 
 info <- discogs_info.tib(pull(x[1,2]), pull(x[1,1]))
 info
@@ -664,5 +693,87 @@ genres
 
 ```
 
+```{r, eval = F}
+# This is essentially how I collected the data I've been using
+
+all.rel.album.info(artist = "Daft Punk", album = "Discovery") %>% 
+  saveRDS(file = "discogs_samp_data.RDS")
+
+```
+
+```{r}
+
+data.main <- readRDS("discogs_samp_data.RDS")
+View(data.main)
+
+data.main.countries <- data.main %>% 
+  filter(!is.na(country),
+         !country == "Unknown",
+         !type == "samples") %>%
+  select(country, main.song) %>% 
+  mutate(country = replace(country, country == "France & Benelux", "France")) %>%
+  mutate(country = replace(country, country == "UK & Europe", "UK")) %>% 
+  mutate(country = gsub("& ","", country)) %>% 
+  mutate(country = as.list(strsplit(country, ", "))) %>% 
+  mutate(country = replace(country, country == "US", "United States"),
+         country = replace(country, country == "UK", "United Kingdom")) %>% 
+  unnest(country) %>% 
+  group_by(country) %>% 
+  summarize(num.used = n()) %>% 
+  arrange(desc(num.used))
+
+ggplot(data.main.countries, aes(x = country, y = num.used)) + geom_col() +   
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+```{r}
+
+View(world)
+
+world.samps <- world %>% 
+  rename(country = name_long) %>% 
+  select(country, geom, continent) %>% 
+  filter(!country == "Antarctica",
+         !country == "Russian Federation",
+         continent == "Europe")
+music.used.mapped <- world.samps %>% 
+  left_join(data.main.countries, by = c("country")) %>% 
+  mutate(num.used = replace(num.used, is.na(num.used), 0))
+View(music.used.mapped)
+
+europe.plot <- ggplot(music.used.mapped, aes(fill = num.used)) + geom_sf() + 
+  scale_fill_gradient(low = "aliceblue", high = "red", name = "Number of \ncredits") + 
+  xlim(-23, 43) + ylim(32, 73) + theme_minimal() +
+  labs(title = "The Spread of Daft Punk in Europe",
+       subtitle = "Where European artists have sampled, \nremixed, or covered 'Discovery'",
+       caption = "Source: WhoSampled, Genius, Discogs") +
+  theme(text = element_text(family = "Courier"),
+        plot.title = element_text(hjust = 0.5, size = 12, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, size = 8),
+        plot.caption = element_text(size = 7, face = "italic"),
+        legend.title = element_text(size = 9)
+        )
+europe.plot
+
+```
+
+
+
+```{r}
+
+library(spotifyr)
+
+Sys.setenv(SPOTIFY_CLIENT_ID = '9ffd8734c372455faf4f66524809478d')
+Sys.setenv(SPOTIFY_CLIENT_SECRET = 'f7d542ebdfa14c318ef9208b877ecd61')
+
+access_token <- get_spotify_access_token()
+
+daft <- get_artist_audio_features('Daft Punk')
+
+daft %>% 
+  filter(album_name == "Discovery") %>% View()
+
+```
 
 
