@@ -943,10 +943,7 @@ ggplot(data.main.countries, aes(x = country, y = num.used)) + geom_col() +
 
 ```{r}
 library(gganimate)
-
-pull(data.main %>% distinct(main.song))
-
-
+library(RColorBrewer)
 
 songs.with.years <- 
   tibble(main.song = 
@@ -985,20 +982,51 @@ num.by.year.tidy <- data.main %>%
 total_ranks <- num.by.year.tidy %>% 
   filter(type == "remix") %>% 
   select(total.all, main.song, year) %>% 
+  mutate(main.song = replace(main.song, main.song == "Harder, Better, Faster, Stronger", 
+                             "Harder, Better,...")) %>% 
   group_by(year) %>% 
-  mutate(rank = rank(-total.all),
-         Value_lbl = paste0(" ", total.all)) %>% 
-  select(!total.all)
+  mutate(rank = rank(-total.all, ties.method = "first"),
+         Value_lbl = paste0(" ", total.all))
 
-num.by.year.formatted <- num.by.year.tidy %>% 
-  left_join(total_ranks, by = c("main.song", "year"))
+mycolors <- colorRampPalette(c("steelblue1", "turquoise2", "turquoise3"))(15)
 
-?rank
+songs.anim <- ggplot(total_ranks, aes(rank, group = main.song, 
+                fill = as.factor(main.song))) +
+  geom_tile(aes(y = total.all/2,
+                height = total.all,
+                width = 0.9), alpha = 0.8, color = "black") +
+  theme_classic() +
+  theme(axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.line = element_blank(),
+        axis.ticks = element_blank()) +
+  labs(y = "", x = "") +
+  geom_text(aes(y = 0, label = paste0(main.song, " ")), vjust = 0.2, 
+            family = "Courier", hjust = 1) +
+  geom_text(aes(y = total.all, label = Value_lbl, hjust = 0, 
+                family = "Courier", fontface = "bold")) +
+  scale_fill_manual(values = c(mycolors)) +
+  scale_x_reverse() +
+  transition_states(year, transition_length = 3, state_length = 1.5) + 
+  coord_flip(clip = "off", expand = FALSE) +
+  guides(color = FALSE, fill = FALSE) + 
+  labs(title = 'Total Uses by Song: {closest_state}',  
+       subtitle  =  "Cumulative samples, covers, and remixes over time") +
+  theme(text = element_text(family = "Courier"),
+        plot.title = element_text(hjust = 1.2, size = 23, face = "bold"),
+        plot.subtitle = element_text(hjust = 2, size = 10, face = "italic"),
+        legend.title = element_text(size = 10),
+        legend.text = element_text(size = 9),
+        axis.title.y = element_text(size = 11),
+        plot.margin = margin(1, 2.5, 0.8, 4.8, "cm")) +
+  view_follow(fixed_x = TRUE)
 
-View(num.by.year.formatted)
+animate(songs.anim)
 
 
 
+
+display.brewer.all()
 
 data.main
 
