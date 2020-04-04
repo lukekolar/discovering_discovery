@@ -20,6 +20,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, message = F, include = F}
 # Initial library loading
 
+library(tidygraph)    # filter() masked by 'tidyverse'
 library(usethis)      # for setting API keys
 library(knitr)
 library(janitor)      # cleaning data
@@ -35,7 +36,9 @@ library(rgeos)
 library(rnaturalearth)
 library(rnaturalearthdata)
 library(sf)
+library(RCurl)        # for the function url.exists()
 library(tidyverse)
+library(viridis)
 
 ```
 
@@ -55,6 +58,7 @@ library(spotifyr)
 Sys.setenv(SPOTIFY_CLIENT_ID = '9ffd8734c372455faf4f66524809478d')
 Sys.setenv(SPOTIFY_CLIENT_SECRET = 'f7d542ebdfa14c318ef9208b877ecd61')
 get_spotify_access_token()
+
 ```
 
 ```{r, message = F, echo = F, include = T}
@@ -99,32 +103,6 @@ sentiment %>%
 
 ```{r, echo = F, include = F}
 # [B] Storing values...
-
-# lyric vectors:
-
-One_More_Time.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "One More Time")
-Aerodynamic.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "Aerodynamic")
-Digital_Love.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "Digital Love")
-H_B_F_S.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "Harder, Better, Faster, Stronger")
-Crescendolls.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "Crescendolls")
-Nightvision.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "Nightvision")
-Superheroes.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "Superheroes")
-High_Life.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "High Life")
-Something_About_Us.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "Something About Us")
-Voyager.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "Voyager")
-Veridis_Quo.lyrics <- get_lyrics_search(artist_name = "Daft Punk",
-                  song_title = "Veridis Quo")
-
 
 # All songs, for use later...
 
@@ -300,8 +278,23 @@ numextract <- function(string){
 }
 
 samp.tibble <- function(artist, song){
-  url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist, fixed = T),"/", 
-                gsub(" ", "-", song, fixed = T), "/")
+  artist.mod <- gsub("'", "%27", artist)
+  song.mod <- gsub("'", "%27", song)
+  song.mod <- gsub(":", "%3A", song)
+  url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist.mod, fixed = T),"/", 
+                gsub(" ", "-", song.mod, fixed = T))
+  if(!url.exists(url)){
+    artist.mod <- gsub(" and.*", "", artist.mod)
+    url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist.mod, fixed = T),"/", 
+                gsub(" ", "-", song.mod, fixed = T))
+  }
+  if(!url.exists(url)){
+    artist.mod <- gsub("/ ", "", artist.mod)
+    song.mod <- gsub("/ ", "", song.mod)
+    song.mod <- gsub("/", "", song.mod)
+    url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist.mod, fixed = T),"/", 
+                gsub(" ", "-", song.mod, fixed = T))
+  }
   samp.vect <- all.sh(url)
   samp.tibble <- tibble(type = c("Samples", "Sampled", "Covers", "Remixes"),
                         number = as.numeric(numextract(samp.vect)))
@@ -311,8 +304,23 @@ samp.tibble <- function(artist, song){
 get.samps <- function(artist, song){
   samp.tib <- samp.tibble(artist, song)
   samp.tib <- samp.tib %>% replace_na(list(number = 0))
-  url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist, fixed = T),"/", 
-                gsub(" ", "-", song, fixed = T))
+  artist.mod <- gsub("'", "%27", artist)
+  song.mod <- gsub("'", "%27", song)
+  song.mod <- gsub(":", "%3A", song)
+  url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist.mod, fixed = T),"/", 
+                gsub(" ", "-", song.mod, fixed = T))
+  if(!url.exists(url)){
+    artist.mod <- gsub(" and.*", "", artist.mod)
+    url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist.mod, fixed = T),"/", 
+                gsub(" ", "-", song.mod, fixed = T))
+  }
+  if(!url.exists(url)){
+    artist.mod <- gsub("/ ", "", artist.mod)
+    song.mod <- gsub("/ ", "", song.mod)
+    song.mod <- gsub("/", "", song.mod)
+    url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist.mod, fixed = T),"/", 
+                gsub(" ", "-", song.mod, fixed = T))
+  }
   if(pull(samp.tib[1, 2]) == 0){
     samps <- NA
   }else{ 
@@ -384,8 +392,24 @@ get.samps <- function(artist, song){
 get.sampd <- function(artist, song){
   samp.tib <- samp.tibble(artist, song)
   samp.tib <- samp.tib %>% replace_na(list(number = 0))
-  url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist, fixed = T),"/", 
-                gsub(" ", "-", song, fixed = T))
+  artist.mod <- gsub("'", "%27", artist)
+  song.mod <- gsub("'", "%27", song)
+  song.mod <- gsub(":", "%3A", song)
+  url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist.mod, fixed = T),"/", 
+                gsub(" ", "-", song.mod, fixed = T))
+  if(!url.exists(url)){
+    artist.mod <- gsub(" and.*", "", artist.mod)
+    url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist.mod, fixed = T),"/", 
+                gsub(" ", "-", song.mod, fixed = T))
+  }
+  if(!url.exists(url)){
+    artist.mod <- gsub("/ ", "", artist.mod)
+    song.mod <- gsub("/ ", "", song.mod)
+    song.mod <- gsub("/", "", song.mod)
+    url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist.mod, fixed = T),"/", 
+                gsub(" ", "-", song.mod, fixed = T))
+  }
+  
   if(pull(samp.tib[2, 2]) == 0){
     sampd <- NA
   }else{ 
@@ -458,8 +482,23 @@ get.sampd <- function(artist, song){
 get.cov <- function(artist, song){
   samp.tib <- samp.tibble(artist, song)
   samp.tib <- samp.tib %>% replace_na(list(number = 0))
-  url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist, fixed = T),"/", 
-                gsub(" ", "-", song, fixed = T))
+  artist.mod <- gsub("'", "%27", artist)
+  song.mod <- gsub("'", "%27", song)
+  song.mod <- gsub(":", "%3A", song)
+  url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist.mod, fixed = T),"/", 
+                gsub(" ", "-", song.mod, fixed = T))
+  if(!url.exists(url)){
+    artist.mod <- gsub(" and.*", "", artist.mod)
+    url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist.mod, fixed = T),"/", 
+                gsub(" ", "-", song.mod, fixed = T))
+  }
+  if(!url.exists(url)){
+    artist.mod <- gsub("/ ", "", artist.mod)
+    song.mod <- gsub("/ ", "", song.mod)
+    song.mod <- gsub("/", "", song.mod)
+    url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist.mod, fixed = T),"/", 
+                gsub(" ", "-", song.mod, fixed = T))
+  }
   if(pull(samp.tib[3, 2]) == 0){
     cov <- NA
   }else{ 
@@ -533,8 +572,23 @@ get.cov <- function(artist, song){
 get.rem <- function(artist, song){
   samp.tib <- samp.tibble(artist, song)
   samp.tib <- samp.tib %>% replace_na(list(number = 0))
-  url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist, fixed = T),"/", 
-                gsub(" ", "-", song, fixed = T))
+  artist.mod <- gsub("'", "%27", artist)
+  song.mod <- gsub("'", "%27", song)
+  song.mod <- gsub(":", "%3A", song)
+  url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist.mod, fixed = T),"/", 
+                gsub(" ", "-", song.mod, fixed = T))
+  if(!url.exists(url)){
+    artist.mod <- gsub(" and.*", "", artist.mod)
+    url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist.mod, fixed = T),"/", 
+                gsub(" ", "-", song.mod, fixed = T))
+  }
+  if(!url.exists(url)){
+    artist.mod <- gsub("/ ", "", artist.mod)
+    song.mod <- gsub("/ ", "", song.mod)
+    song.mod <- gsub("/", "", song.mod)
+    url <- paste0("https://www.whosampled.com/", gsub(" ", "-", artist.mod, fixed = T),"/", 
+                gsub(" ", "-", song.mod, fixed = T))
+  }
   if(pull(samp.tib[4, 2]) == 0){
     rem <- NA
   }else{ 
@@ -622,6 +676,21 @@ all.rel <- function(artist, song){
     
 }
 
+all.rel.album <- function(artist, album) {
+  tracklist <- get_album_tracklist_search(artist_name = artist,
+                                          album_name = album) %>% 
+               select(song_number, song_title) %>% 
+               rename(track.num = song_number,
+                      song = song_title) %>% 
+               mutate(main.artist = artist)
+  
+  all.rel.album.tib <- map2_dfr(as.vector(tracklist$main.artist), 
+                                     as.vector(tracklist$song),
+                                     ~all.rel(artist = .x,
+                                              song = .y))
+  all.rel.album.tib
+}
+
 is.discogs.error <- function(x){
   tryCatch({x},
            warning = function(w){FALSE},
@@ -647,6 +716,18 @@ discogs_info.tib <- function(artist, song){
          genre = ifelse(is.na(result), NA, result[[1]]$genre))
 }
 
+all.rel.song.info <- function(artist, song){
+  all.rell.song <- all.rel(artist, song) %>% mutate(main.song = song)
+  types.col <- all.rell.song %>% select(type)
+  
+  all.rel.song.info.tib <- map2_dfr(as.vector(all.rell.song$artist), 
+                                    as.vector(all.rell.song$track), ~discogs_info.tib(artist = .x, 
+                                                                                      song = .y)) %>% 
+                           cbind(types.col) %>% 
+                           mutate(main.song = all.rell.song$main.song)
+  all.rel.song.info.tib
+}
+
 all.rel.album.info <- function(artist, album){
   tracklist <- get_album_tracklist_search(artist_name = artist,
                                           album_name = album) %>% 
@@ -662,22 +743,10 @@ all.rel.album.info <- function(artist, album){
   all.rel.album.info.tib
 }  
 
-all.rel.song.info <- function(artist, song){
-  all.rell.song <- all.rel(artist, song) %>% mutate(main.song = song)
-  types.col <- all.rell.song %>% select(type)
-  
-  all.rel.song.info.tib <- map2_dfr(as.vector(all.rell.song$artist), 
-                                    as.vector(all.rell.song$track), ~discogs_info.tib(artist = .x, 
-                                                                                      song = .y)) %>% 
-                           cbind(types.col) %>% 
-                           mutate(main.song = all.rell.song$main.song)
-  all.rel.song.info.tib
-}
-
 ```
 
-```{r, include = F}
-# Example of whosampled and Discogs functions I've written:
+```{r, eval = F}
+# Example of intermediate and Discogs functions I've written:
 
 artist <- "Daft Punk"
 song <- "One More Time"
@@ -697,14 +766,159 @@ genres
 # This is essentially how I collected the data I've been using
 
 all.rel.album.info(artist = "Daft Punk", album = "Discovery") %>% 
+  inner_join(all.rel.album("Daft Punk", "Discovery"), by = c("artist", "type", c("song" = "track"))) %>%
   saveRDS(file = "discogs_samp_data.RDS")
 
 ```
 
+```{r, eval = T}
+# Run this code chunk to access above data
+
+data.main <- readRDS("discogs_samp_data.RDS")
+
+```
+
+```{r}
+# Functions solely for "sampled" songs (and songs that sampled them...)
+
+just.sampd <- function(artist, song){
+  sampd <- get.sampd(artist, song)
+
+  all.tib <- tibble(track = c("filler"), artist = c("filler"), year = c("filler"), type = c("filler")) 
+  all.tib <- if(is.tibble(sampd)){rbind(all.tib, sampd)}else{all.tib}
+  
+  all.tib %>% filter(!track == "filler")
+}
+
+just.sampd.data <- function(data) {
+  tracks <- data %>% 
+              distinct(track, artist, year) %>% 
+              rename("song" = track) %>% 
+              mutate(main.artist = artist) %>% 
+              mutate(main.artist = trim(main.artist)) %>% 
+              mutate(song = trim(song))
+  
+  just.sampd.tib <- map2_dfr(as.vector(tracks$main.artist), 
+                                     as.vector(tracks$song),
+                                     ~just.sampd(artist = .x,
+                                                 song = .y))
+  just.sampd.tib
+}
+
+just.sampd.song.info <- function(artist, song){
+  if(nrow(just.sampd(artist, song)) >= 1){
+  just.sampd.song <- just.sampd(artist, song) %>% mutate(main.song = song,
+                                                         orig.artist = artist)
+  types.col <- just.sampd.song %>% select(type)
+  
+  just.sampd.song.info.tib <- map2_dfr(as.vector(just.sampd.song$artist), 
+                                       as.vector(just.sampd.song$track), 
+                                       ~discogs_info.tib(artist = .x, 
+                                                         song = .y)) %>% 
+                           cbind(types.col) %>% 
+                           mutate(main.song = just.sampd.song$main.song)
+  }else{
+    just.sampd.song.info.tib <- tibble("song" = character(), "artist" = character(), 
+                                       "style" = list(), "country" = character(), 
+                                       "genre" = list(), "type" = character(), 
+                                       "main.song" = character())
+  }  
+  just.sampd.song.info.tib
+}
+
+just.sampd.album.info <- function(artist, album){
+  tracklist <- get_album_tracklist_search(artist_name = artist,
+                                          album_name = album) %>% 
+               select(song_number, song_title) %>% 
+               rename(track.num = song_number,
+                      song = song_title) %>% 
+               mutate(main.artist = artist)
+  
+  just.sampd.album.info.tib <- map2_dfr(as.vector(tracklist$main.artist), 
+                                        as.vector(tracklist$song),
+                                        ~just.sampd.song.info(artist = .x,
+                                                              song = .y))
+  just.sampd.album.info.tib
+}  
+
+just.sampd.data.info <- function(data){
+  tracks <- data %>% 
+              distinct(track, artist, year) %>% 
+              rename("song" = track) %>% 
+              mutate(main.artist = artist) %>% 
+              mutate(main.artist = trim(main.artist)) %>% 
+              mutate(song = trim(song))
+  
+  just.sampd.data.info.tib <- map2_dfr(as.vector(tracks$main.artist), 
+                                       as.vector(tracks$song),
+                                       ~just.sampd.song.info(artist = .x,
+                                                             song = .y))
+  just.sampd.data.info.tib
+}
+
+```
+
+
+```{r, warning = F, eval = F}
+# This code chunk, now set to "eval = F", was used to gather the samples of
+# samples (round 1), the samples of those samples (round 2), etc. In total, I
+# conducted 3 "rounds", then combined them into one data table. I combined this
+# with the original data, then I saved this as an RDS file to serve my shiny
+# app, because the code was quite slow to run.
+
+round1.sampd.data <- just.sampd.data.info((data.main %>% filter(type == "sampled")))
+round1.sampd <- just.sampd.data(data.main %>% filter(type == "sampled"))
+round1.sampd.all <- round1.sampd.data %>% 
+  inner_join(round1.sampd, by = c("artist", "type", c("song" = "track")))
+
+round2.sampd.data <- just.sampd.data.info(data = (round1.sampd.all %>% rename(track = song)))
+round2.sampd <- just.sampd.data(data = (round1.sampd.all %>% rename(track = song)))
+round2.sampd.all <- round2.sampd.data %>% 
+  inner_join(round2.sampd, by = c("artist", "type", c("song" = "track")))
+
+round3.sampd.data <- just.sampd.data.info(data = (round2.sampd.all %>% rename(track = song)))
+round3.sampd <- just.sampd.data(data = (round2.sampd.all %>% rename(track = song)))
+round3.sampd.all <- round3.sampd.data %>% 
+  inner_join(round3.sampd, by = c("artist", "type", c("song" = "track")))
+
+sampd.network.raw <- data.main %>% filter(type == "sampled") %>% rename(song = track) %>% 
+  rbind(round1.sampd.all, round2.sampd.all, round3.sampd.all)
+
+sampd.network.raw %>% saveRDS(file = "sampd_network_raw.RDS")
+
+```
+
+```{r, eval = T}
+# Run this code chunk to access above data
+
+sampd.network.raw <- readRDS("sampd_network_raw.RDS")
+View(sampd.network.raw)
+```
+
+```{r}
+# This is the code chunk in which I'm working on creating the sample network.
+# It's very, very complicated, and I've experimented with several packages. I've
+# determined that if it's at all possible, 'data.tree' is my best bet.
+
+library(data.tree)
+library(DiagrammeR)
+
+sampd.network.raw <- sampd.network.raw %>% mutate(year = as.numeric(year))
+
+sampd.network.raw$pathString <- paste(sampd.network.raw$main.song, 
+                                      sampd.network.raw$song,
+                                      sep = "/")
+
+sampd.tree <- as.Node(sampd.network.raw)
+print(sampd.tree, "artist", "year")
+
+```
+
+
+
 ```{r}
 
 data.main <- readRDS("discogs_samp_data.RDS")
-View(data.main)
 
 data.main.countries <- data.main %>% 
   filter(!is.na(country),
@@ -728,8 +942,140 @@ ggplot(data.main.countries, aes(x = country, y = num.used)) + geom_col() +
 ```
 
 ```{r}
+library(gganimate)
 
-View(world)
+pull(data.main %>% distinct(main.song))
+
+
+
+songs.with.years <- 
+  tibble(main.song = 
+           unlist(map(as.list(pull(data.main %>% 
+                                     filter(!type == "samples") %>% 
+                                     distinct(main.song))), 
+                      ~rep(., length(pull(data.main %>% 
+                                            filter(!type == "samples") %>% 
+                                            distinct(year)))))),
+         year = rep(pull(data.main %>% 
+                           filter(!type == "samples") %>% 
+                           distinct(year) %>% 
+                           arrange(year)), 
+                    length(pull(data.main %>% 
+                                  filter(!type == "samples") %>%
+                                  distinct(main.song))))) %>% 
+  mutate(year = as.numeric(year)) %>% 
+  slice(rep(1:n(), each = 3)) %>% 
+  mutate(type = rep(c("sampled", "cover", "remix"), n()/3))
+songs.with.years
+  
+
+num.by.year.tidy <- data.main %>% 
+  mutate(year = as.numeric(year)) %>% 
+  filter(!type == "samples") %>% 
+  group_by(main.song, type, year) %>% 
+  summarize(total.i = n()) %>% 
+  right_join(songs.with.years, by = c("main.song", "year", "type")) %>% 
+  mutate(total.i = replace_na(total.i, 0)) %>% 
+  group_by(main.song, type) %>% 
+  mutate(total.each = cumsum(total.i)) %>% 
+  group_by(main.song) %>% 
+  mutate(total.all = cumsum(total.i)) %>% 
+  ungroup()
+
+total_ranks <- num.by.year.tidy %>% 
+  filter(type == "remix") %>% 
+  select(total.all, main.song, year) %>% 
+  group_by(year) %>% 
+  mutate(rank = rank(-total.all),
+         Value_lbl = paste0(" ", total.all)) %>% 
+  select(!total.all)
+
+num.by.year.formatted <- num.by.year.tidy %>% 
+  left_join(total_ranks, by = c("main.song", "year"))
+
+?rank
+
+View(num.by.year.formatted)
+
+
+
+
+data.main
+
+
+```
+
+
+```{r, message = F, warning = F}
+# Plotting years of 'Discovery' sampled, remixed, and covered
+
+credit.chronology <- ggplot((
+                              data.main %>% 
+                                  filter(!type == "samples") %>% 
+                                  mutate(type = as.factor(type)) %>% 
+                                  mutate(type = 
+                                         factor(type, levels = 
+                                                      c("remix", "sampled", "cover"))) %>% 
+                                  group_by(track, artist, year, type) %>% 
+                                  distinct(track)
+                            ), 
+                            aes(x = year, y = n, fill = type)) + 
+  geom_bar(position = "stack", stat = "identity") + 
+  theme_classic() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  labs(title = "The Influence of 'Discovery' Over Time",
+       subtitle = "Chronology of international samples, covers, and remixes of Daft Punk's 'Discovery'",
+       caption = "Source: WhoSampled, Genius, Discogs",
+       y = "credits", x = NULL) + 
+  theme(text = element_text(family = "Courier"),
+        plot.title = element_text(hjust = 0.5, size = 23, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, size = 10),
+        plot.caption = element_text(hjust = 1, size = 9, face = "italic"),
+        legend.title = element_text(size = 10),
+        legend.text = element_text(size = 9),
+        axis.title.y = element_text(size = 11),
+        axis.text.x = element_text(size = 9)
+        ) + 
+  scale_y_continuous(expand = c(0,0.15), limits = c(0, 24)) +
+  scale_fill_manual(values = c("steelblue1", "turquoise2", "turquoise3"), name = "Credit type",
+                    breaks = c("remix", "sampled", "cover")) +
+  theme(plot.margin = unit(c(1,1,1,1.5), "cm"))
+
+# ggsave("discovery_graphics/chart_graphics/credit_chronology.png", height = 7, width =10)
+include_graphics("discovery_graphics/chart_graphics/credit_chronology.png")
+
+```
+
+```{r}
+
+relevel.genres <- c("Classical", "Reggae", 
+                    "Brass Military", "Country", 
+                    "Folk", "Non-Music", "World", 
+                    "Jazz", "Rock", "Funk", "Soul", 
+                    "Pop", "Hip Hop")
+
+data.main.edit <- data.main %>% 
+  filter(!is.na(genre)) %>% 
+  unnest(genre) %>% 
+  mutate(genre = gsub("& ","", genre)) %>% 
+  mutate(genre = as.list(strsplit(genre, ", "))) %>% 
+  unnest(genre) %>% 
+  mutate(genre = as.list(strsplit(genre, " / "))) %>% 
+  unnest(genre) %>% 
+  mutate(genre = as.factor(genre)) %>% 
+  mutate(genre = factor(genre, levels = relevel.genres)) %>% 
+  group_by(genre, type, year) %>% 
+  filter(!genre == "Electronic") %>% 
+  filter(type == "cover") %>% 
+  count(year)
+  
+ggplot(data.main.edit, aes(x = genre, y = n, fill = genre)) + geom_col(position = "stack")
+
+glimpse(data.main)
+
+```
+
+```{r}
+# Mapping geography of 'Discovery' sampled, remixed, and covered, Europe only
 
 world.samps <- world %>% 
   rename(country = name_long) %>% 
@@ -740,23 +1086,96 @@ world.samps <- world %>%
 music.used.mapped <- world.samps %>% 
   left_join(data.main.countries, by = c("country")) %>% 
   mutate(num.used = replace(num.used, is.na(num.used), 0))
-View(music.used.mapped)
 
 europe.plot <- ggplot(music.used.mapped, aes(fill = num.used)) + geom_sf() + 
   scale_fill_gradient(low = "aliceblue", high = "red", name = "Number of \ncredits") + 
   xlim(-23, 43) + ylim(32, 73) + theme_minimal() +
   labs(title = "The Spread of Daft Punk in Europe",
-       subtitle = "Where European artists have sampled, \nremixed, or covered 'Discovery'",
+       subtitle = "Where European artists have sampled, \nremixed, or covered Daft Punk's 'Discovery'",
        caption = "Source: WhoSampled, Genius, Discogs") +
   theme(text = element_text(family = "Courier"),
-        plot.title = element_text(hjust = 0.5, size = 1, face = "bold"),
-        plot.subtitle = element_text(hjust = 0.5, size = 8),
-        plot.caption = element_text(size = 7, face = "italic"),
-        legend.title = element_text(size = 9)
-        )
-europe.plot
+        plot.title = element_text(hjust = 0.5, size = 20, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, size = 10),
+        plot.caption = element_text(hjust = 1, size = 9, face = "italic"),
+        legend.title = element_text(size = 10)
+        ) +
+  theme(plot.margin = unit(c(0,0,0,1), "cm"))
 
-ggsave("discovery_graphics/map_graphics/europe_credits.png")
+# ggsave("discovery_graphics/map_graphics/europe_credits.png")
+include_graphics("discovery_graphics/map_graphics/europe_credits.png")
+
+```
+
+```{r}
+library(gtrendsR)
+library(ggforce)
+library(lubridate)
+library(pracma)
+
+
+daft_punk_time_search <- gtrends(keyword = c("Daft Punk"), 
+                                 gprop = c("web"), time = "all")$interest_over_time
+
+daft_punk_topics.time <- function(keyword, time.start.time.end){
+  time_trends <- gtrends(keyword = c(keyword), gprop = c("web"), 
+                         time = time.start.time.end)$related_topics %>%
+    mutate(value.no.spaces = str_replace_all(value, " ", "")) %>%
+    distinct(value.no.spaces, .keep_all = T) %>% 
+    mutate(value.upper = str_to_upper(value)) %>% 
+    mutate(value.upper.no.spaces = str_replace_all(value.upper, " ", "")) %>% 
+    distinct(value.upper, .keep_all = T) %>% 
+    distinct(value.upper.no.spaces, .keep_all = T) %>% 
+    filter(!value %in% c("Album", "Discography", "Concert", 
+                         "Concert tour", "Music video")) %>% 
+    filter(!str_detect(value, keyword)) %>% 
+    filter(!str_detect(value, pattern = 
+                         str_split(keyword, " ", 
+                                   simplify = T)[1,ncol(str_split(keyword, " ", 
+                                                                  simplify = T))])) %>% 
+    mutate(value = gsub("\\s*\\([^\\)]+\\)","", value)) %>% 
+    distinct(value, .keep_all = T) %>% 
+    slice(1:5) %>% 
+    select(value) %>% 
+    mutate(time = time.start.time.end)
+  time_trends
+}
+
+gtrends(keyword = c("Daft Punk"), gprop = c("web"), 
+        time = "2005-02-01 2005-04-01")$related_topics
+
+
+
+x <- tibble(column1 = c("space here", "space there")) %>% 
+mutate(column2 = gsub(" ","",column1))
+x
+
+peak1 <- daft_punk_topics.time("Daft Punk", "2005-02-01 2005-04-01")
+peak2 <- daft_punk_topics.time("Daft Punk", "2007-11-01 2008-01-01")
+peak3 <- daft_punk_topics.time("Daft Punk", "2010-11-01 2011-01-01")
+peak4 <- daft_punk_topics.time("Daft Punk", "2013-04-01 2013-06-01")
+peak5 <- daft_punk_topics.time("Daft Punk", "2013-12-01 2014-02-01")
+peak6 <- daft_punk_topics.time("Daft Punk", "2017-01-01 2017-03-01")
+
+peaks <- peak1 %>% rbind(peak2, peak3, peak4, peak5, peak6)
+peaks
+
+findpeaks(daft_punk_time_search$hits, minpeakheight = 10)[,c(2,4)]
+daft_punk_time_search
+
+daft_punk_time_search
+ggplot(data = daft_punk_time_search, aes(x = date, y = hits))+
+        geom_line(col = "red") + xlab(NULL) + ylab("Relative Interest") + theme_bw()+
+        geom_area(fill = "steelblue1") + theme_classic() + 
+  labs(title = "'Daft Punk' Google Search Volume",
+       subtitle = "from 2004 to 2020",
+       caption = "Source: Google Trends") +
+  theme(text = element_text(family = "Courier"),
+       plot.title = element_text(hjust = 0.5, size = 20, face = "bold"),
+       plot.subtitle = element_text(hjust = 0.5, size = 12),
+       plot.caption = element_text(hjust = 1, size = 9, face = "italic"),
+       legend.title = element_text(size = 10)
+       ) +
+  scale_y_continuous(expand = c(0,5), limits = c(0, 105))
 
 ```
 
