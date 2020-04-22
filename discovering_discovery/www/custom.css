@@ -1,0 +1,50 @@
+
+.main-header .logo {
+  font-family: “Courier New”, Courier, monospace;
+  font-weight: bold;
+  font-size: 18px;
+}
+.main-sidebar {
+  font-family: “Courier New”, Courier, monospace;
+}
+
+h2 {
+  font-family: “Courier New”, Courier, monospace;
+}
+ 
+h3 {
+  font-family: “Courier New”, Courier, monospace;
+  font-size: 14px;
+}
+
+# adjusting slider for ranks graph
+
+.col-sm-6 .control-label {
+  font-size: 0px;
+  margin-bottom: 5px;
+}
+
+.col-sm-6 .box-title {
+  font-weight: bold;
+  font-size: 20px;
+}
+
+.col-sm-6 .box-header {
+  padding-bottom: 5px;
+  padding-top: 15px;
+}
+
+.col-sm-6 .box-body {
+  padding-top: 5px;
+  padding-bottom: 0px;
+}
+
+
+.col-sm-6 .irs {
+  font-family: “Courier New”, Courier, monospace;
+}
+
+.col-sm-6 .irs-slider {
+  border: 1px solid #3C8DBC;
+}
+
