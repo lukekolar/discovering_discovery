@@ -767,14 +767,14 @@ genres
 
 all.rel.album.info(artist = "Daft Punk", album = "Discovery") %>% 
   inner_join(all.rel.album("Daft Punk", "Discovery"), by = c("artist", "type", c("song" = "track"))) %>%
-  saveRDS(file = "discogs_samp_data.RDS")
+  saveRDS(file = "discovering_discovery/scraped_data/discogs_samp_data.RDS")
 
 ```
 
 ```{r, eval = T}
 # Run this code chunk to access above data
 
-data.main <- readRDS("discogs_samp_data.RDS")
+data.main <- readRDS("discovering_discovery/scraped_data/discogs_samp_data.RDS")
 
 ```
 
@@ -884,14 +884,14 @@ round3.sampd.all <- round3.sampd.data %>%
 sampd.network.raw <- data.main %>% filter(type == "sampled") %>% rename(song = track) %>% 
   rbind(round1.sampd.all, round2.sampd.all, round3.sampd.all)
 
-sampd.network.raw %>% saveRDS(file = "scraped_data/sampd_network_raw.RDS")
+sampd.network.raw %>% saveRDS(file = "discovering_discovery/scraped_data/sampd_network_raw.RDS")
 
 ```
 
 ```{r, eval = T}
 # Run this code chunk to access above data
 
-sampd.network.raw <- readRDS("scraped_data/sampd_network_raw.RDS") %>% 
+sampd.network.raw <- readRDS("discovering_discovery/scraped_data/sampd_network_raw.RDS") %>% 
   filter(!style == "Breakbeat")
 
 ```
@@ -1333,7 +1333,7 @@ plotAncDes.new(songg2, song.ind.network.anc, vColor = "blue") +
   labs(title = paste0("Sample Tree of '", songg2, "'"))
 }
 
-create.sample.tree.plot("Aerodynamic")
+create.sample.tree.plot("Crescendolls")
 
 
 ```
@@ -1360,7 +1360,7 @@ print(sampd.tree, "artist", "year")
 
 ```{r}
 
-data.main <- readRDS("discogs_samp_data.RDS")
+data.main <- readRDS("discovering_discovery/scraped_data/discogs_samp_data.RDS")
 
 data.main.countries <- data.main %>% 
   filter(!is.na(country),
@@ -1505,6 +1505,46 @@ songs.anim2 <- ggplot(total_ranks %>% filter(year == year.slide), aes(rank, grou
         plot.margin = margin(1, 1, 0.8, 3, "cm"))
 songs.anim2
 
+
+```
+
+
+```{r}
+
+year.slide <- 2019
+data.main
+data.main %>% 
+  filter(!year > year.slide,
+         !type == "samples") %>% 
+  group_by(type) %>%
+  distinct(track, year) %>% 
+  summarize(count = n()) 
+
+create.type.summary.plot <- function(year.slide){
+  
+  label <- data.frame(type = "Covers", count = 130, label = year.slide)
+  
+  ggplot((data.main %>% 
+    filter(!year > year.slide,
+           !type == "samples") %>% 
+    mutate(type = str_replace(type, "sampled", "Samples"),
+           type = str_replace(type, "remix", "Remixes"),
+           type = str_replace(type, "cover", "Covers")) %>% 
+    group_by(type) %>%  
+    distinct(track, year) %>% 
+    summarize(count = n())), aes(x = type, y = count)) + geom_col(fill = "turquoise3", color = "grey1") + 
+    coord_flip() + theme_classic() + ylim(0, 150) + geom_text(aes(x = type, label = count, hjust = -0.5, 
+                                                              family = "Courier", fontface = "bold"), size = 5) +
+    theme(text = element_text(family = "Courier"),
+                 axis.text.y = element_text(angle = 60, size = 14, hjust = 0.66, vjust = 0, face = "bold"),
+                 axis.text.x = element_text(size = 10),
+                 axis.ticks.y = element_blank()) +
+    labs(x = "", y = "") +
+    geom_label(data = label, aes(label = label), fontface = "bold", 
+               size = 10, family = "Courier", label.padding = unit(0.5, "lines"), color = "white", fill = "steelblue")
+}
+
+create.type.summary.plot(2009)
 
 ```
 

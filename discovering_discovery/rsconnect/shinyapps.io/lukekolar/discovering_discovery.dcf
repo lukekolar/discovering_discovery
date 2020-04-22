@@ -5,8 +5,8 @@ account: lukekolar
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2059165
-bundleId: 3047575
+bundleId: 3052093
 url: https://lukekolar.shinyapps.io/discovering_discovery/
-when: 1587520310.45608
+when: 1587592693.83451
 asMultiple: FALSE
 asStatic: FALSE

@@ -7,8 +7,12 @@ library(RColorBrewer)
 
 ## ranks plot 
 
+library(grid)
+
+data.main <- readRDS("scraped_data/discogs_samp_data.RDS")
 total_ranks <- readRDS("scraped_data/total_ranks.RDS")
 mycolors <- colorRampPalette(c("steelblue1", "turquoise2", "turquoise3"))(15)
+
 
 create_ranks.graph <- function(year.slide){
     ranks.graph <- ggplot(total_ranks %>% filter(year == year.slide), 
@@ -38,6 +42,33 @@ create_ranks.graph <- function(year.slide){
           plot.subtitle = element_text(hjust = 0.5, size = 9, face = "italic"),
           plot.margin = margin(1, 1.3, 0.8, 3, "cm"))
     ranks.graph
+}
+
+create.type.summary.plot <- function(year.slide){
+ 
+    label <- data.frame(type = "Covers", count = 135, label = year.slide)    
+       
+    ggplot((data.main %>% 
+                filter(!year > year.slide,
+                       !type == "samples") %>% 
+                mutate(type = str_replace(type, "sampled", "Samples"),
+                       type = str_replace(type, "remix", "Remixes"),
+                       type = str_replace(type, "cover", "Covers")) %>% 
+                group_by(type) %>%  
+                distinct(track, year) %>% 
+                summarize(count = n())), aes(x = type, y = count)) + geom_col(fill = "turquoise2", color = "grey") + 
+        coord_flip() + theme_classic() + ylim(0, 150) + geom_text(aes(x = type, label = count, hjust = -0.5, 
+                                                                      family = "Courier"), size = 5) +
+        theme(text = element_text(family = "Courier"),
+              axis.text.y = element_text(angle = 60, size = 12, hjust = 0.66, vjust = 0),
+              axis.text.x = element_text(size = 10),
+              axis.ticks.y = element_blank(),
+              plot.margin = unit(c(0, 20, 0, 0), "pt")) + 
+        scale_y_continuous(expand = c(0, 0), limits = c(0, 155)) +
+        labs(x = "", y = "") +
+        geom_label(data = label, aes(label = label), fontface = "bold", 
+                   size = 8, family = "Courier", label.padding = unit(0.5, "lines"), color = "white", fill = "steelblue")
+    
 }
 
 ## ggenealogy trees
@@ -470,7 +501,7 @@ HBFS.tracks <- (find.ind.network("Harder, Better, Faster, Stronger") %>%
                song = str_replace(song, "Hoes", "H**s")))$song
 
 tree.tracklist <- c("One More Time", "Aerodynamic", "Digital Love",
-               "Nightvision", "Superheroes", "High Life", 
+               "Crescendolls", "Nightvision", "Superheroes", "High Life", 
                "Something About Us", "Voyager", "Veridis Quo",
                "Short Circuit", "Face to Face", "Too Long")
 
@@ -510,11 +541,14 @@ ui <- dashboardPage(
         tabItems(
             tabItem(tabName = "influence",
                 fluidRow(column(width = 12,
-                    box(plotOutput("ranks.graph")),
+                    box(tags$div(class = "header", 
+                                 tags$b(textOutput("ranks.graph.title"))),
+                        plotOutput("ranks.graph")),
                     
-                    box(title = "Total Uses by Song and Year:",
-                        sliderInput("year.slide", label = NULL, min = 2000, max = 2020,
-                                    sep = '', ticks = 21, value = 2020)),
+                    box(sliderInput("year.slide", label = NULL, min = 2000, max = 2020,
+                                    sep = '', ticks = 21, value = 2020),
+                        plotOutput("type.graph"),
+                        helpText("Shows total unique uses by type, excluding repeats.")),
                     padding = 15
                     )
                 ),
@@ -522,11 +556,11 @@ ui <- dashboardPage(
                     box(plotOutput("HBFS.network"),
                         selectInput("net.track", "Show path to..", 
                                     choices = HBFS.tracks),
-                                    helpText("Tracks that sampled 'Harder, Better, Faster, Stronger', or tracks that sampled those tracks.")),
+                                    helpText("Tracks that sample 'Harder, Better,...', or tracks sampling those tracks.")),
                     box(plotOutput("tree.plot"),
                         selectInput("tree.choice", "Show samples of...", 
                                     choices = tree.tracklist),
-                        helpText("Tracks with zero samples are excluded. Only samples - not total uses (covers, remixes) - are shown.")),
+                        helpText("Covers and remixes are not shown - only samples.")),
                     padding = 15
                     )
                 )),
@@ -542,9 +576,15 @@ ui <- dashboardPage(
 # Define server logic required to draw a histogram
 server <- function(input, output) {
 
+    output$ranks.graph.title <- renderText({
+        paste0("Total Uses by Song (year: ", input$year.slide, ")")
+    })
     output$ranks.graph <- renderPlot({
         create_ranks.graph(input$year.slide)
     })
+    output$type.graph <- renderPlot({
+        create.type.summary.plot(input$year.slide)
+    }, height = 150)
     output$HBFS.network <- renderPlot({
         create.sample.net.plot(songg1 = "Harder, Better, Faster, Stronger",
                                songPath = input$net.track)
