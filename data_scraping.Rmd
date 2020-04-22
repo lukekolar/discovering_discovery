@@ -884,14 +884,14 @@ round3.sampd.all <- round3.sampd.data %>%
 sampd.network.raw <- data.main %>% filter(type == "sampled") %>% rename(song = track) %>% 
   rbind(round1.sampd.all, round2.sampd.all, round3.sampd.all)
 
-sampd.network.raw %>% saveRDS(file = "sampd_network_raw.RDS")
+sampd.network.raw %>% saveRDS(file = "scraped_data/sampd_network_raw.RDS")
 
 ```
 
 ```{r, eval = T}
 # Run this code chunk to access above data
 
-sampd.network.raw <- readRDS("sampd_network_raw.RDS") %>% 
+sampd.network.raw <- readRDS("scraped_data/sampd_network_raw.RDS") %>% 
   filter(!style == "Breakbeat")
 
 ```
@@ -1245,8 +1245,7 @@ find.ind.network <- function(songg){
 
 ```{r}
 
-create.sample.net.plot <- function(songg1 = c("Harder, Better, Faster, Stronger", 
-                    "One More Time", "Digital Love"), songPath){
+create.sample.net.plot <- function(songg1 = "Harder, Better, Faster, Stronger", songPath){
 
 song.ind.network <- sampd.network.raw %>%
       filter(artist != "Daft Punk") %>%
@@ -1263,7 +1262,11 @@ song.ind.network <- sampd.network.raw %>%
       mutate(child = str_replace(child, "Bitch", "B***h"),
              child = str_replace(child, "Fuck", "F**k"),
              parent = str_replace(parent, "Bitch", "B***h"),
-             parent = str_replace(parent, "Fuck", "F**k"))
+             parent = str_replace(parent, "Fuck", "F**k"),
+             child = str_replace(child, "Hoes", "H**s"),
+             parent = str_replace(parent, "Hoes", "H**s"),
+             child = str_replace(child, "DOUCHE", "D****E"),
+             parent = str_replace(parent, "DOUCHE", "D****E"))
 
 song.ind.network.IG <- dfToIG(song.ind.network)
 song.ind.network.CP <- na.omit(c(song.ind.network$child, song.ind.network$parent))
