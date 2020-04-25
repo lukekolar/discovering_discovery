@@ -1,18 +1,21 @@
 #### data test
 
+library(plotly)
 library(tidyverse)
 library(RColorBrewer)
+
 
 ### page 1 functions:
 
 ## ranks plot 
 
 library(grid)
+library(patchwork)
+library(gganimate)
 
 data.main <- readRDS("scraped_data/discogs_samp_data.RDS")
 total_ranks <- readRDS("scraped_data/total_ranks.RDS")
 mycolors <- colorRampPalette(c("steelblue1", "turquoise2", "turquoise3"))(15)
-
 
 create_ranks.graph <- function(year.slide){
     ranks.graph <- ggplot(total_ranks %>% filter(year == year.slide), 
@@ -44,6 +47,194 @@ create_ranks.graph <- function(year.slide){
     ranks.graph
 }
 
+create.non.ranked.plot <- function(year.slide){
+    
+    total_ranks.plot <- total_ranks %>%
+        mutate(main.song = str_replace(main.song, "Harder, Better, Faster, Stronger", 
+                                       "Harder, Better,...")) %>% 
+        mutate(main.song = factor(main.song, levels = tracks))
+    
+    ggplot(total_ranks.plot %>% filter(year == year.slide), aes(x = main.song, y = total.all)) + 
+        geom_col(fill = "lightblue2", color = "grey") + labs(x = "", y = "") + 
+        theme_classic() + scale_y_continuous(expand = c(0, 0), limits = c(0, 99)) +
+        theme(axis.text.x = element_text(angle = 60, hjust = 1),
+              text = element_text("Courier")) +
+        geom_text(aes(y = total.all, x = main.song, 
+                      label = paste0(ifelse(total.all != 0, total.all, ""))),
+                  family = "Courier", size = 4.5, fontface = "bold", vjust = -1) +
+        geom_label(aes(x = "Short Circuit", y = 65, label = year.slide),
+                   size = 8, family = "Courier", label.padding = unit(0.5, "lines"), 
+                   color = "white", fill = "steelblue")
+    
+}
+
+create.samps.anim <- function(){
+    
+    songs.anim <- ggplot(total_ranks, aes(rank, group = main.song, 
+                                          fill = as.factor(main.song))) +
+        geom_tile(aes(y = total.all/2,
+                      height = total.all,
+                      width = 0.9), alpha = 0.8, color = "black") +
+        theme_classic() +
+        theme(axis.text.y = element_blank(),
+              axis.text.x = element_blank(),
+              axis.line = element_blank(),
+              axis.ticks = element_blank()) +
+        labs(y = "", x = "") +
+        geom_text(aes(y = 0, label = paste0(main.song, " ")), vjust = 0.2, 
+                  family = "Courier", hjust = 1) +
+        geom_text(aes(y = total.all, label = Value_lbl, hjust = 0, 
+                      family = "Courier", fontface = "bold")) +
+        scale_fill_manual(values = c(mycolors)) +
+        scale_x_reverse() +
+        transition_states(year, transition_length = 3, state_length = 1.5) + 
+        coord_flip(clip = "off", expand = FALSE) +
+        guides(color = FALSE, fill = FALSE) + 
+        labs(title = 'Total Uses by Song: {closest_state}',  
+             subtitle  =  "Cumulative samples, covers, and remixes over time") +
+        theme(text = element_text(family = "Courier"),
+              plot.title = element_text(hjust = 2, size = 23, face = "bold"),
+              plot.subtitle = element_text(hjust = -28, size = 10, face = "italic"),
+              plot.margin = margin(1, 1.2, 0.8, 4.8, "cm")) +
+        view_follow(fixed_x = TRUE)
+    
+    animate(songs.anim, 200, fps = 20)
+}
+
+create.samp.donut <- function(year.slide, song){
+    
+    songs.with.years <- 
+        tibble(main.song = 
+                   unlist(map(as.list(pull(data.main %>% 
+                                               filter(!type == "samples") %>% 
+                                               distinct(main.song))), 
+                              ~rep(., length(pull(data.main %>% 
+                                                      filter(!type == "samples") %>% 
+                                                      distinct(year)))))),
+               year = rep(pull(data.main %>% 
+                                   filter(!type == "samples") %>% 
+                                   distinct(year) %>% 
+                                   arrange(year)), 
+                          length(pull(data.main %>% 
+                                          filter(!type == "samples") %>%
+                                          distinct(main.song))))) %>% 
+        mutate(year = as.numeric(year)) %>% 
+        slice(rep(1:n(), each = 3)) %>% 
+        mutate(type = rep(c("sampled", "cover", "remix"), n()/3))
+    
+    set1 <- data.main %>% 
+        select(type, main.song, year) %>% 
+        mutate(year = as.numeric(year)) %>% 
+        filter(!type == "samples") %>% 
+        group_by(year, type, main.song) %>% 
+        summarize(total.i = n()) %>% 
+        full_join(songs.with.years, by = c("main.song", "year", "type")) %>% 
+        mutate(total.i = replace_na(total.i, 0)) %>% 
+        arrange(year) %>% 
+        group_by(main.song, type) %>% 
+        mutate(total.each = cumsum(total.i))
+    
+    set2 <- data.main %>% 
+        select(type, main.song, year) %>% 
+        mutate(year = as.numeric(year)) %>% 
+        filter(!type == "samples") %>% 
+        group_by(year, main.song) %>% 
+        summarize(total.year = n()) %>% 
+        ungroup() %>% 
+        full_join(tibble(year = rep(c(2000:2020), 14), 
+                         main.song = unlist(map(list("One More Time", "Aerodynamic", "Digital Love",
+                                                     "Harder, Better, Faster, Stronger", "Crescendolls", 
+                                                     "Nightvision", "Superheroes", "High Life", 
+                                                     "Something About Us", "Voyager", "Veridis Quo",
+                                                     "Short Circuit", "Face to Face", "Too Long"), ~ rep(.x, 21)))),
+                  by = c("year", "main.song")) %>% 
+        mutate(total.year = replace_na(total.year, 0)) %>% 
+        arrange(desc(total.year)) %>% 
+        distinct(year, main.song, .keep_all = TRUE) %>% 
+        group_by(main.song) %>% 
+        arrange(year) %>% 
+        mutate(total.all = cumsum(total.year))
+    
+    set3 <- set2 %>% 
+        full_join(set1, by = c("year", "main.song")) %>%  
+        mutate(fraction = total.each/total.all)
+    
+    set <- set3 %>% filter(year == year.slide, 
+                           main.song == song) %>% 
+        mutate(type = factor(type, levels = c("sampled", "cover", "remix")))
+    
+    samps <- set %>% filter(type == "sampled") %>% pull(total.each)
+    covs <- set %>% filter(type == "cover") %>% pull(total.each)
+    rems <- set %>% filter(type == "remix") %>% pull(total.each)
+    
+    plot <- 
+        
+        if(samps == 0 & covs == 0 & rems == 0){
+            ggplot(tibble(main.song = song, val = 1), aes(xmin = 3.25, xmax = 4, ymin = 0, 
+                                                          ymax = val), fill = NA) + xlim(1, 5) + coord_polar(theta="y", start = 0) +
+                annotate(geom = "text", x = 5, y = 0.5, 
+                         label = ifelse(song != "Harder, Better, Faster, Stronger", 
+                                        ifelse(song != "Something About Us", song, "Something About..."), 
+                                        "Harder, Better,..."), size = 2.75, 
+                         fontface = "bold", family = "Courier") + 
+                annotate(geom = "text", x = 1, y = 0, 
+                         label = paste0("Samples: 0\nCovers: 0\nRemixes: 0"), 
+                         size = 2.25, family = "Courier") + theme_void() +
+                theme(plot.margin = margin(-0.4, -0.5, -0.4, -0.5, "cm"))
+        }else{ 
+            ggplot(set, aes(xmin = 3.25, xmax = 4, fill = type, ymin = c(0, head(cumsum(fraction), n=-1)), 
+                            ymax = cumsum(fraction))) + xlim(1, 5) +
+                coord_polar(theta="y", start = 0) + 
+                scale_fill_manual(values = c("turquoise2", "steelblue1", "turquoise4"), name = "",
+                                  breaks = c("sampled", "cover", "remix")) +
+                geom_rect(color = "grey", size = 0.25) + labs(x = "", y = "") + theme_classic() + 
+                theme(axis.text = element_blank(),
+                      axis.ticks = element_blank(),
+                      axis.line = element_blank(),
+                      text = element_text(family = "Courier"),
+                      plot.title = element_text(hjust = 0.5, face = "bold"),
+                      plot.margin = margin(-0.4, -0.5, -0.4, -0.5, "cm"),
+                      legend.position = "none") + 
+                annotate(geom = "text", x = 5, y = 0, 
+                         label = ifelse(song != "Harder, Better, Faster, Stronger", 
+                                        ifelse(song != "Something About Us", song, "Something About..."), 
+                                        "Harder, Better,..."), size = 2.75, 
+                         fontface = "bold", family = "Courier") + 
+                annotate(geom = "text", x = 1, y = 0, 
+                         label = paste0("Samples: ", samps, "\nCovers: ", covs, "\nRemixes: ", rems), 
+                         size = 2.25, family = "Courier")
+        }
+}
+
+create.pie.plots <- function(year.slide){
+    
+    track1 <- create.samp.donut(year.slide = year.slide, song = "One More Time")
+    track2 <- create.samp.donut(year.slide = year.slide, song = "Aerodynamic")
+    track3 <- create.samp.donut(year.slide = year.slide, song = "Digital Love")
+    track4 <- create.samp.donut(year.slide = year.slide, song = "Harder, Better, Faster, Stronger")
+    track5 <- create.samp.donut(year.slide = year.slide, song = "Crescendolls")
+    track6 <- create.samp.donut(year.slide = year.slide, song = "Nightvision")
+    track7 <- create.samp.donut(year.slide = year.slide, song = "Superheroes")
+    track8 <- create.samp.donut(year.slide = year.slide, song = "High Life")
+    track9 <- create.samp.donut(year.slide = year.slide, song = "Something About Us")
+    track10 <- create.samp.donut(year.slide = year.slide, song = "Voyager")
+    track11 <- create.samp.donut(year.slide = year.slide, song = "Veridis Quo")
+    track12 <- create.samp.donut(year.slide = year.slide, song = "Short Circuit")
+    track13 <- create.samp.donut(year.slide = year.slide, song = "Face to Face")
+    track14 <- create.samp.donut(year.slide = year.slide, song = "Too Long")
+     
+    year.lab <- ggplot() + ylim(-1,1) + xlim(-1,1) + theme_void() + 
+        theme(plot.margin = margin(-0.4, -0.5, -0.4, -0.5, "cm")) +
+        annotate("label", x = 0.1, y = 0, label = year.slide,
+                 family = "Courier", size = 7, label.padding = unit(0.5, "lines"), 
+                 color = "white", fill = "steelblue", face = "bold")
+    
+    (track1 | track2 | track3 | track4 | track5) /
+        (track6 | track7 | year.lab | track8 | track9) / 
+        (track10 | track11 | track12 | track13 | track14)
+    
+}
+
 create.type.summary.plot <- function(year.slide){
  
     label <- data.frame(type = "Covers", count = 135, label = year.slide)    
@@ -56,7 +247,7 @@ create.type.summary.plot <- function(year.slide){
                        type = str_replace(type, "cover", "Covers")) %>% 
                 group_by(type) %>%  
                 distinct(track, year) %>% 
-                summarize(count = n())), aes(x = type, y = count)) + geom_col(fill = "turquoise2", color = "grey") + 
+                summarize(count = n())), aes(x = type, y = count)) + geom_col(fill = "lightblue2", color = "grey") + 
         coord_flip() + theme_classic() + ylim(0, 150) + geom_text(aes(x = type, label = count, hjust = -0.5, 
                                                                       family = "Courier"), size = 5) +
         theme(text = element_text(family = "Courier"),
@@ -70,6 +261,95 @@ create.type.summary.plot <- function(year.slide){
                    size = 8, family = "Courier", label.padding = unit(0.5, "lines"), color = "white", fill = "steelblue")
     
 }
+
+create.uses.line.plot <- function(year.slide){
+    
+    data <- data.main %>% 
+        group_by(year) %>% 
+        filter(!type == "samples") %>% 
+        mutate(type = str_replace(type, "sampled", "Samples"),
+               type = str_replace(type, "remix", "Remixes"),
+               type = str_replace(type, "cover", "Covers")) %>% 
+        group_by(type, year) %>%  
+        distinct(track, year) %>% 
+        summarize(count = n()) %>% 
+        ungroup() %>% 
+        rbind(tibble(year = rep(2000:2020, 3), type = c(rep("Covers", 21), rep("Remixes", 21), 
+                                                        rep("Samples", 21)), count = 0)) %>% 
+        group_by(type) %>% 
+        arrange(year) %>% 
+        mutate(total.type = cumsum(count)) %>% 
+        arrange(desc(count)) %>% 
+        distinct(type, year, .keep_all = T) %>% 
+        ungroup() %>% 
+        mutate(year = as.numeric(year)) %>% 
+        mutate(type = factor(type, levels = c("Samples", "Covers", "Remixes")))
+    
+    ggplot(data, aes(x = year, y = total.type, color = type)) + 
+        geom_point(size = 2) + geom_line(aes(group = type), size = 1.25) + 
+        geom_vline(aes(xintercept = year.slide), color = "red", linetype = "dashed") + theme_classic() + 
+        labs(y = "", x = "") + ylim(0, 150) +
+        theme(text = element_text(family = "Courier"),
+              axis.text.x = element_text(angle = 60, hjust = 1),
+              legend.title = element_blank(),
+              legend.position = "none") +
+        scale_color_manual(values = c("turquoise2", "steelblue1", "turquoise4"))
+    
+}
+
+create.uses.per.year.plot <- function(year.slide){
+    
+    data <- data.main %>%
+        mutate(year = as.numeric(year)) %>% 
+        filter(!type == "samples") %>% 
+        mutate(type = str_replace(type, "sampled", "Samples"),
+               type = str_replace(type, "remix", "Remixes"),
+               type = str_replace(type, "cover", "Covers")) %>% 
+        mutate(type = as.factor(type)) %>% 
+        mutate(type = factor(type, levels = c("Samples", "Covers", "Remixes"))) %>% 
+        group_by(track, artist, year, type) %>% 
+        distinct(track) %>%
+        summarize(n = n())
+    
+    ggplot(data, aes(x = year, y = n, fill = type)) + 
+        geom_bar(position = "stack", stat = "identity", color = "white", size = 0.25) + 
+        theme_classic() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+        labs(y = NULL, x = NULL) + 
+        theme(text = element_text(family = "Courier"),
+              plot.title = element_text(hjust = 0.5, size = 23, face = "bold"),
+              plot.subtitle = element_text(hjust = 0.5, size = 10),
+              plot.caption = element_text(hjust = 1, size = 9, face = "italic"),
+              legend.title = element_text(size = 10),
+              legend.text = element_text(size = 9),
+              axis.title.y = element_text(size = 11),
+              axis.text.x = element_text(size = 9),
+              legend.position = "top") + ylim(0, 25) + 
+        scale_y_continuous(expand = c(0,0.15), limits = c(0, 24)) +
+        scale_fill_manual(values = c("turquoise2", "steelblue1", "turquoise4"), name = "",
+                          breaks = c("Samples", "Covers", "Remixes")) +
+        theme(plot.margin = unit(c(1,1,1,1.5), "cm")) +
+        geom_rect(aes(xmin = year.slide - 0.5, xmax = year.slide + 0.5, ymin = 0, 
+                      ymax = (data %>% filter(year == year.slide) %>% nrow())),
+                  fill = NA, color = "red", size = 0.4) +
+        geom_label(aes(label = paste0((data %>% filter(year == year.slide) %>% nrow()), 
+                                      " use", if(year.slide != 2020){"s"}),
+                       x = 2004, y = 20), 
+                   size = 4, family = "Courier", 
+                   color = "white", fill = "steelblue")
+    
+}
+
+create.line.and.uses.patch <- function(year.slide){
+ 
+    p1 <- create.type.summary.plot(year.slide = year.slide)
+    p2 <- create.uses.line.plot(year.slide = year.slide)
+    p3 <- create.uses.per.year.plot(year.slide = year.slide)
+
+    p1 / (p2 + p3) / guide_area() + 
+        plot_layout(guides = "collect", heights = unit(c(8, 12, 1), "null"))
+    
+}
+    
 
 ## ggenealogy trees
 
@@ -541,13 +821,16 @@ ui <- dashboardPage(
         tabItems(
             tabItem(tabName = "influence",
                 fluidRow(column(width = 12,
-                    box(tags$div(class = "header", 
-                                 tags$b(textOutput("ranks.graph.title"))),
-                        plotOutput("ranks.graph")),
+                    box(sliderInput("year.slide2", label = NULL, min = 2000, max = 2020,
+                                    sep = '', ticks = 21, value = 2020),
+                        plotOutput("plot.tab1"),
+                        selectInput("plot.choice.tab1", "Show...", 
+                                    choices = c("Use Distributions by Year",
+                                                "Use Type Distributions by Song and Year"))),
                     
                     box(sliderInput("year.slide", label = NULL, min = 2000, max = 2020,
                                     sep = '', ticks = 21, value = 2020),
-                        plotOutput("type.graph"),
+                        plotOutput("line.and.uses.patch"),
                         helpText("Shows total unique uses by type, excluding repeats.")),
                     padding = 15
                     )
@@ -579,12 +862,20 @@ server <- function(input, output) {
     output$ranks.graph.title <- renderText({
         paste0("Total Uses by Song (year: ", input$year.slide, ")")
     })
-    output$ranks.graph <- renderPlot({
-        create_ranks.graph(input$year.slide)
+    output$plot.tab1 <- renderPlot({
+        if(input$plot.choice.tab1 == "Use Type Distributions by Song and Year"){
+            create.pie.plots(input$year.slide2)
+        }else{
+            create.non.ranked.plot(input$year.slide2)
+        }
+        
     })
-    output$type.graph <- renderPlot({
-        create.type.summary.plot(input$year.slide)
-    }, height = 150)
+    output$line.and.uses.patch <- renderPlot({
+        create.line.and.uses.patch(input$year.slide)
+    })
+    output$uses.line.plot <- renderPlot({
+        create.uses.line.plot(input$year.slide)
+    })
     output$HBFS.network <- renderPlot({
         create.sample.net.plot(songg1 = "Harder, Better, Faster, Stronger",
                                songPath = input$net.track)
