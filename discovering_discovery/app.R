@@ -55,7 +55,7 @@ create.non.ranked.plot <- function(year.slide){
         mutate(main.song = factor(main.song, levels = tracks))
     
     ggplot(total_ranks.plot %>% filter(year == year.slide), aes(x = main.song, y = total.all)) + 
-        geom_col(fill = "lightblue2", color = "grey") + labs(x = "", y = "") + 
+        geom_col(fill = "lightblue2", color = "grey") + labs(x = "", y = "Cumulative Uses") + 
         theme_classic() + scale_y_continuous(expand = c(0, 0), limits = c(0, 99)) +
         theme(axis.text.x = element_text(angle = 60, hjust = 1),
               text = element_text("Courier")) +
@@ -809,9 +809,9 @@ ui <- dashboardPage(
         ),
         width = 300,
         sidebarMenu(
-            menuItem("Influence", tabName = "influence", icon = icon("th")),
-            menuItem("Lyrics", tabName = "lyrics", icon = icon("th")),
-            menuItem("Popularity", tabName = "popularity", icon = icon("th"))
+            menuItem("About the Project", tabName = "about", icon = icon("address-card")),
+            menuItem("Samples and Uses", tabName = "influence", icon = icon("th")),
+            menuItem("Connections", tabName = "connections", icon = icon("th"))
         )
     ),
     dashboardBody(
@@ -819,13 +819,51 @@ ui <- dashboardPage(
             tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
         ),
         tabItems(
+            tabItem(tabName = "about",
+                fluidRow(column(12, align = "center",
+                                box(width = 12, h1("About the Project"),
+                                    p("Why does a 20-year-old electronic dance music album still matter today? And why do samples, remixes, and covers matter in examining it?"))
+                                    
+                    )
+                ),
+                fluidRow(column(12,
+                    box(width = 12,
+                        h1("Background"),
+                        p("Thomas Bangalter and Guy-Manuel de Homen-Christo met in secondary school, recording electronic demos in the late 1980s. With a third friend, they formed a band", "\"Darlin’,\"", "after the Beach Boys song of the same name.", "\"Darlin’,\"", "was a short-lived experiment, and a British music magazine described their music as", "\"daft punky.\"", "When Bangalter and Homen-Christo returned to the electronic music scene in the mid-90s, they released their debut album", em("Homework,"), "under the name Daft Punk.", em("Homework"), "was an instant classic, aweing critics and fans alike with its ability to balance incredible innovation and addictive listenability; few predecessors in dance music could so naturally spin club hits out of dissected Billy Joel horn notes, cryptic autotuned lyrics, and drum loops.", em("Homework"), "ranks high among most critics’ lists of the best 90s albums, but it wasn’t until 2001 when Daft Punk would release their definitive work:", em("Discovery.")),
+                        p("I don’t play an instrument, much less understand how to use a soundboard or a sampler. Truthfully, I don’t even like dance music that much. But the brilliance of", em("Discovery"), "is far from esoteric; when I first heard the album, I was blown away by the creativity, energy, and intelligence of every track. Reading further into the album’s story (for a quick summary, watch", a("this", href = "https://pitchfork.com/tv/15-docs/discovery-when-daft-punk-became-robots/"), "video), I grew more interested in the album’s relationship with sampling.", em("Discovery"), "is often cited as massively influential on modern dance music, and samples, covers, and remixes may be a good way to measure substantive influence, not just popularity. To visualize its influence, I wanted to explore uses of the album’s fourteen songs from the release of the first single, \"One More Time,\" in 2000, to early 2020 when I began this project."),
+                        p("Additionally, my project touches on another fundamental question of popular music. What measurable qualities make a song, or an album, influential? While finding a definitive answer, or proving that the answer is nonexistent, may be impossible, I attempted to display how certain qualities of a song, both music and nonmusical, are or are not correlated with \"influence\" shown through uses."),
+                        h1("The Data"),
+                        p("The data for this project came from a multitude of sources, some accessible and others unintentionally hostile to data scientists."),
+                        p("In the latter category was", a("whosampled.com", href = "https://www.whosampled.com"), "- since no API exists, so I had to resort to creating various functions taking advantage of the site’s CSS selectors and formulaic URLs. This is an awesome website for music nerds and casual listeners alike, being the largest database for samples, remixes, and covers of all genres of music."), 
+                        p("I also took advantage of the Internet’s largest music database", a("Discogs", href = "https://www.discogs.com"), "using an R package to gather data on country, genre, and style of songs in the sample data."),
+                        p("To gather and examine song lyrics, I used data from the", a("Genius", href = "https://genius.com"), "database.", a("Spotify", href = "https://www.spotify.com/uk/"), "provided me with music analytical data (variables like danceability and valence)."),
+                        p("Finally, I toyed with", a("Google Trends", href = "https://trends.google.com/trends/?geo=US"), "data to look at changes in Internet popularity over time."),
+                        p("The code for this project is public on my", a("GitHub", href = "google.com"), "page."),
+                        
+                        h1("About Me"),
+                        p("My name is Luke Kolar, and I’m currently an undergraduate student at Harvard University studying Government and Statistics."), 
+                        p("You can reach me via email:", a("lukekolar@college.harvard.edu", href = "mailto: lukekolar@college.harvard.edu"))
+                        )
+                        )
+                ),
+                fluidRow(column(12, align = "center",
+                                imageOutput("intro.gif")     
+                         )
+                )  
+            ),
             tabItem(tabName = "influence",
+                fluidRow(column(12, align = "center",
+                                    box(width = 12, h1("Samples and Uses"),
+                                        p("This page demonstrates the musical influence of all 14 tracks on", em("Discovery"), "as represented by samples, remixes, and covers by other artists, as well as samples of samples..."))
+                                    
+                    )
+                ),
                 fluidRow(column(width = 12,
                     box(sliderInput("year.slide2", label = NULL, min = 2000, max = 2020,
                                     sep = '', ticks = 21, value = 2020),
                         plotOutput("plot.tab1"),
                         selectInput("plot.choice.tab1", "Show...", 
-                                    choices = c("Use Distributions by Year",
+                                    choices = c("Cumulative Uses by Year",
                                                 "Use Type Distributions by Song and Year"))),
                     
                     box(sliderInput("year.slide", label = NULL, min = 2000, max = 2020,
@@ -848,10 +886,12 @@ ui <- dashboardPage(
                     )
                 )),
             
-            tabItem(tabName = "lyrics",
-                    h2("Coming soon...")),
-            tabItem(tabName = "popularity",
-                    h2("Coming soon..."))
+            tabItem(tabName = "connections",
+                    fluidRow(column(12, align = "center",
+                                    box(width = 12, h1("Connections"),
+                                        p("This page examines several distinctions between the 14 tracks on", em("Discovery"), "and potential correlation between them and our influence measurement; namely, total uses."))
+                                    )
+                    ))
         )
     )
 )
@@ -859,6 +899,12 @@ ui <- dashboardPage(
 # Define server logic required to draw a histogram
 server <- function(input, output) {
 
+    output$intro.gif <- renderImage({
+        
+        list(src = "./misc/daft.gif")
+        
+    }, deleteFile = FALSE)
+    
     output$ranks.graph.title <- renderText({
         paste0("Total Uses by Song (year: ", input$year.slide, ")")
     })

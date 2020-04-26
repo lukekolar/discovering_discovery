@@ -1474,12 +1474,10 @@ create.samps.anim <- function(){
   animate(songs.anim, 200, fps = 20)
 }
 
-# animate(songs.anim, 200, fps = 20)
-
 create.samps.anim()
 
-# anim_save("discovery_graphics/chart_graphics/songs.anim.gif")
-include_graphics("discovery_graphics/chart_graphics/songs.anim.gif")
+anim_save("discovering_discovery/misc/songs.anim.gif", ani.width= 1000, ani.height=1000)
+include_graphics("discovering_discovery/misc/songs.anim.gif")
 
 ```
 
@@ -2025,11 +2023,51 @@ Sys.setenv(SPOTIFY_CLIENT_SECRET = 'f7d542ebdfa14c318ef9208b877ecd61')
 
 access_token <- get_spotify_access_token()
 
-daft <- get_artist_audio_features('Daft Punk')
+daft2 <- get_artist_audio_features('Daft Punk') %>% 
+  filter(album_name == "Discovery") %>% 
+  select(track_name, track_number,
+         energy, mode, mode_name, instrumentalness,
+         tempo, duration_ms, key, key_name, 
+         speechiness, liveness, valence,
+         danceability, loudness, acousticness)
+daft1 <- data.main %>% 
+  filter(type == "sampled") %>% 
+  group_by(main.song) %>% 
+  summarize(sampled = n()) %>% 
+  full_join(data.main %>% 
+    filter(type == "cover") %>% 
+    group_by(main.song) %>% 
+    summarize(covered = n()), by = "main.song") %>% 
+  full_join(data.main %>% 
+    filter(type == "remix") %>% 
+    group_by(main.song) %>% 
+    summarize(remixed = n()), by = "main.song") %>% 
+  mutate(covered = replace_na(covered, 0),
+         remixed = replace_na(remixed, 0),
+         total.uses = sampled + remixed + covered)
 
-daft %>% 
-  filter(album_name == "Discovery") %>% View()
+daft <- daft2 %>% full_join(daft1, by = c("track_name" = "main.song"))
+daft %>% colnames()
+corrplot(cor(daft %>% 
+               select(energy, mode, instrumentalness,
+                      tempo, duration_ms, key, 
+                      speechiness, liveness, valence,
+                      danceability, loudness, acousticness, 
+                      remixed, covered, sampled, total.uses)), 
+         type = "upper", insig = "label_sig")
+
+daft
+
+library(corrplot)
+
+summary(lm(data = daft, total.uses ~ valence))
 
 ```
+
+
+
+
+
+
 
 
