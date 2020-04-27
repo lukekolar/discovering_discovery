@@ -76,7 +76,325 @@ tracklist <- tracklist[c(1, 3:4, 7, 9, 13:14),]
 
 # scrape album lyrics
 lyrics <- map_df(tracklist$song_lyrics_url, get_lyrics_url)
+lyrics %>% 
+  group_by(song_name) %>% 
+  distinct(line) %>% 
+  summarize(distinct = n()) %>% 
+full_join((lyrics %>% 
+  group_by(song_name) %>% 
+  summarize(total = n())), by = "song_name")
 
+check_line_repetition <- function(songname){
+  
+  lyrics %>% filter(song_name == songname) %>% 
+    group_by(song_name) %>% 
+    distinct(line) %>% 
+    summarize(distinct = n()) %>% 
+  full_join((lyrics %>% filter(song_name == songname) %>%  
+    group_by(song_name) %>% 
+    summarize(total = n())), by = "song_name") %>% 
+    mutate(number = total/distinct) %>% 
+    pull(number)
+  
+}
+
+check_word_repetition <- function(songname){
+
+  collapsed_string <- paste(as.vector(t((lyrics %>% 
+    filter(song_name == songname))$line)), sep = " ", collapse = " ")
+  
+  totalwords <- sapply(strsplit(collapsed_string, " "), length)
+  
+  split_string <- tibble(words = unlist(strsplit(collapsed_string, " ")))
+  
+  uniquewords <- split_string %>% 
+    distinct(words) %>% 
+    summarize(distinct = n()) %>% 
+    pull(distinct)
+  
+  totalwords / uniquewords
+
+}
+
+lyrics %>% 
+  distinct(song_name) %>% 
+  mutate(line_rep = map(song_name, ~check_line_repetition(songname = .)),
+         word_rep = map(song_name, ~check_word_repetition(songname = .))) %>% 
+  unnest(cols = c(line_rep, word_rep)) %>% 
+  left_join(readRDS("discovering_discovery/scraped_data/discovery_song_qualities.RDS"), 
+                         by = c("song_name" = "track_name")) %>% 
+          select(song_name, line_rep, word_rep, total.uses) %>% 
+  saveRDS("discovering_discovery/scraped_data/discovery_repetition_index.RDS")
+
+repetition <- readRDS("discovering_discovery/scraped_data/discovery_repetition_index.RDS")
+repetition
+
+create.outlier.word.rep <- function(method){
+
+p1outl <- ggplot(repetition %>% 
+         mutate(song_name = str_replace(song_name, "Harder, Better, Faster, Stronger",
+                                        "Harder, Better,...")) %>% 
+         mutate(song_name = factor(song_name, levels = c("Digital Love", "Face to Face",
+                                                         "Something About Us", "One More Time",
+                                                         "Harder, Better,...", "Too Long", "Superheroes"))), 
+       aes(x = word_rep, y = song_name)) + geom_col(fill = "steelblue", color = "grey2") + 
+  labs(x = "word repetition\n(total words / unique words)", y = "ordered songs") + theme_classic() + 
+  scale_x_continuous(expand = c(0.01,0.15), limits = c(0, 99)) + 
+  theme(text = element_text(family = "Courier"),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.border = element_rect(color = "black", fill = NA)) +
+  geom_text(aes(label = paste(" ", song_name, ":
+ ", round(word_rep, digits = 2), sep = "")), hjust = 0, 
+             vjust = 0.5, size = 2.5, family = "Courier")
+p2out <- ggplot(repetition, aes(x = word_rep, y = total.uses)) + geom_point() + 
+  scale_x_continuous(expand = c(0.005,0.15), limits = c(0, 85)) + theme_classic() +
+  scale_y_continuous(expand = c(0.005,0.15), limits = c(0, 99)) + 
+  labs(y = "total uses", x = "word repetition\n(total words / unique words)") + 
+  theme(text = element_text(family = "Courier"),
+        panel.grid.major = element_line(colour = "lightgrey"))
+  
+p2outlm <- p2out + geom_smooth(method = "lm", formula = y ~ x, se = F)
+
+if(method == "Linear"){
+  (p2outlm | p1outl) + plot_layout(widths = unit(c(12, 12), "null"))
+}else{
+  (p2out | p1outl) + plot_layout(widths = unit(c(12, 12), "null")) 
+}
+}
+
+check_line_repetition(songname = "One More Time")
+
+check_word_repetition(songname = "Digital Love")
+
+create.no.outlier.word.rep <- function(method){
+
+p1noutl <- ggplot(repetition %>% 
+         filter(song_name != "Superheroes") %>% 
+         mutate(song_name = str_replace(song_name, "Harder, Better, Faster, Stronger",
+                                        "Harder, Better,...")) %>% 
+         mutate(song_name = factor(song_name, levels = c("Digital Love", "Face to Face",
+                                                         "Something About Us", "One More Time",
+                                                         "Harder, Better,...", "Too Long"))), 
+       aes(x = word_rep, y = song_name)) + geom_col(fill = "steelblue", color = "grey2") + 
+  labs(x = "word repetition\n(total words / unique words)", y = "ordered songs") + theme_classic() + 
+  scale_x_continuous(expand = c(0.01,0.15), limits = c(0, 23)) + 
+  theme(text = element_text(family = "Courier"),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.border = element_rect(color = "black", fill = NA)) +
+  geom_text(aes(label = paste(" ", song_name, ":
+ ", round(word_rep, digits = 2), sep = "")), hjust = 0, 
+             vjust = 0.5, size = 2.5, family = "Courier")
+p2nout <- ggplot(repetition %>% 
+                  filter(song_name != "Superheroes"), aes(x = word_rep, y = total.uses)) + 
+  geom_point() + scale_x_continuous(expand = c(0.005,0.15), limits = c(0, 18)) + theme_classic() +
+  scale_y_continuous(expand = c(0.005,0.15), limits = c(0, 99)) + 
+  labs(y = "total uses", x = "word repetition\n(total words / unique words)") + 
+  theme(text = element_text(family = "Courier"),
+        panel.grid.major = element_line(colour = "lightgrey"))
+  
+p2noutlm <- p2out + geom_smooth(method = "lm", formula = y ~ x, se = F)
+
+if(method == "Linear"){
+  (p2noutlm | p1noutl) + plot_layout(widths = unit(c(12, 12), "null"))
+}else{
+  (p2nout | p1noutl) + plot_layout(widths = unit(c(12, 12), "null")) 
+}
+}
+
+```
+
+```{r}
+library(patchwork)
+
+repetition <- readRDS("discovering_discovery/scraped_data/discovery_repetition_index.RDS")
+
+rep.graph.options <- c("Word Repetition (remove outlier)", 
+                       "Word Repetition (with outlier)",
+                       "Line Repetition (remove outlier)",
+                       "Line Repetition (with outlier)")
+
+create.rep.graph <- function(type, method){
+  
+  if(type == "Word Repetition (remove outlier)"){
+    create.no.outlier.word.rep(method)
+  }else{
+    if(type == "Word Repetition (with outlier)"){
+      create.outlier.word.rep(method)
+    }else{if(type == "Line Repetition (remove outlier)"){
+      create.no.outlier.line.rep(method)
+      }else{
+        create.outlier.line.rep(method)
+      }
+    }
+  }
+  
+}
+
+create.outlier.word.rep <- function(method){
+
+p1outl <- ggplot(repetition %>% 
+         mutate(song_name = str_replace(song_name, "Harder, Better, Faster, Stronger",
+                                        "Harder, Better,...")) %>% 
+         mutate(song_name = factor(song_name, levels = c("Digital Love", "Face to Face",
+                                                         "Something About Us", "One More Time",
+                                                         "Harder, Better,...", "Too Long", "Superheroes"))), 
+       aes(x = word_rep, y = song_name)) + geom_col(fill = "steelblue", color = "grey2") + 
+  labs(x = "word repetition\n(total words / unique words)", y = "ordered songs") + theme_classic() + 
+  scale_x_continuous(expand = c(0.01,0.15), limits = c(0, 99)) + 
+  theme(text = element_text(family = "Courier"),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.border = element_rect(color = "black", fill = NA)) +
+  geom_text(aes(label = paste(" ", song_name, ":
+ ", round(word_rep, digits = 2), sep = "")), hjust = 0, 
+             vjust = 0.5, size = 2.5, family = "Courier")
+p2out <- ggplot(repetition, aes(x = word_rep, y = total.uses)) + geom_point() + 
+  scale_x_continuous(expand = c(0.005,0.15), limits = c(0, 85)) + theme_classic() +
+  scale_y_continuous(expand = c(0.005,0.15), limits = c(0, 99)) + 
+  labs(y = "total uses", x = "word repetition\n(total words / unique words)") + 
+  theme(text = element_text(family = "Courier"),
+        panel.grid.major = element_line(colour = "lightgrey"))
+  
+p2outlm <- p2out + geom_smooth(method = "lm", formula = y ~ x, se = F)
+
+if(method == "Linear"){
+  (p2outlm | p1outl) + plot_layout(widths = unit(c(12, 12), "null"))
+}else{
+  (p2out | p1outl) + plot_layout(widths = unit(c(12, 12), "null")) 
+}
+}
+
+create.no.outlier.word.rep <- function(method){
+
+p1noutl <- ggplot(repetition %>% 
+         filter(song_name != "Superheroes") %>% 
+         mutate(song_name = str_replace(song_name, "Harder, Better, Faster, Stronger",
+                                        "Harder, Better,...")) %>% 
+         mutate(song_name = factor(song_name, levels = c("Digital Love", "Face to Face",
+                                                         "Something About Us", "One More Time",
+                                                         "Harder, Better,...", "Too Long"))), 
+       aes(x = word_rep, y = song_name)) + geom_col(fill = "steelblue", color = "grey2") + 
+  labs(x = "word repetition\n(total words / unique words)", y = "ordered songs") + theme_classic() + 
+  scale_x_continuous(expand = c(0.01,0.15), limits = c(0, 23)) + 
+  theme(text = element_text(family = "Courier"),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.border = element_rect(color = "black", fill = NA)) +
+  geom_text(aes(label = paste(" ", song_name, ":
+ ", round(word_rep, digits = 2), sep = "")), hjust = 0, 
+             vjust = 0.5, size = 2.5, family = "Courier")
+p2nout <- ggplot(repetition %>% 
+                  filter(song_name != "Superheroes"), aes(x = word_rep, y = total.uses)) + 
+  geom_point() + scale_x_continuous(expand = c(0.005,0.15), limits = c(0, 18)) + theme_classic() +
+  scale_y_continuous(expand = c(0.005,0.15), limits = c(0, 99)) + 
+  labs(y = "total uses", x = "word repetition\n(total words / unique words)") + 
+  theme(text = element_text(family = "Courier"),
+        panel.grid.major = element_line(colour = "lightgrey"))
+  
+p2noutlm <- p2nout + geom_smooth(method = "lm", formula = y ~ x, se = F)
+
+if(method == "Linear"){
+  (p2noutlm | p1noutl) + plot_layout(widths = unit(c(12, 12), "null"))
+}else{
+  (p2nout | p1noutl) + plot_layout(widths = unit(c(12, 12), "null")) 
+}
+}
+
+create.no.outlier.line.rep <- function(method){
+
+line.p1noutl <- ggplot(repetition %>% 
+         filter(song_name != "Superheroes") %>% 
+         mutate(song_name = str_replace(song_name, "Harder, Better, Faster, Stronger",
+                                        "Harder, Better,...")) %>% 
+         mutate(song_name = factor(song_name, levels = c("Digital Love", "Something About Us", 
+                                                         "Face to Face", "Harder, Better,...",
+                                                         "One More Time", "Too Long"))), 
+       aes(x = line_rep, y = song_name)) + geom_col(fill = "steelblue", color = "grey2") + 
+  labs(x = "line repetition\n(total lines / unique lines)", y = "ordered songs") + theme_classic() + 
+  scale_x_continuous(expand = c(0.01,0.15), limits = c(0, 9)) + 
+  theme(text = element_text(family = "Courier"),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.border = element_rect(color = "black", fill = NA)) +
+  geom_text(aes(label = paste(" ", song_name, ":
+ ", round(line_rep, digits = 2), sep = "")), hjust = 0, 
+             vjust = 0.5, size = 2.5, family = "Courier")
+line.p2nout <- ggplot(repetition %>% 
+                  filter(song_name != "Superheroes"), aes(x = line_rep, y = total.uses)) + 
+  geom_point(alpha = 0.7) + scale_x_continuous(expand = c(0.005,0.15), limits = c(0, 7.5)) + theme_classic() +
+  scale_y_continuous(expand = c(0.005,0.15), limits = c(0, 99)) + 
+  labs(y = "total uses", x = "line repetition\n(total lines / unique lines)") + 
+  theme(text = element_text(family = "Courier"),
+        panel.grid.major = element_line(colour = "lightgrey")) +
+  annotate("text", x = 1.18, y = 38, label = "(two points)", size = 2.25, family = "Courier")
+line.p2noutlm <- line.p2nout + geom_smooth(method = "lm", formula = y ~ x, se = F)
+
+if(method == "Linear"){
+  (line.p2noutlm | line.p1noutl) + plot_layout(widths = unit(c(12, 12), "null"))
+}else{
+  (line.p2nout | line.p1noutl) + plot_layout(widths = unit(c(12, 12), "null")) 
+}
+}
+
+create.outlier.line.rep <- function(method){
+
+line.p1outl <- ggplot(repetition %>% 
+         mutate(song_name = str_replace(song_name, "Harder, Better, Faster, Stronger",
+                                        "Harder, Better,...")) %>% 
+         mutate(song_name = factor(song_name, levels = c("Digital Love", "Something About Us", 
+                                                         "Face to Face", "Harder, Better,...",
+                                                         "One More Time", "Too Long",
+                                                         "Superheroes"))), 
+       aes(x = line_rep, y = song_name)) + geom_col(fill = "steelblue", color = "grey2") + 
+  labs(x = "line repetition\n(total lines / unique lines)", y = "ordered songs") + theme_classic() + 
+  scale_x_continuous(expand = c(0.01,0.15), limits = c(0, 100)) + 
+  theme(text = element_text(family = "Courier"),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.border = element_rect(color = "black", fill = NA)) +
+  geom_text(aes(label = paste(" ", song_name, ":
+ ", round(line_rep, digits = 2), sep = "")), hjust = 0, 
+             vjust = 0.5, size = 2.5, family = "Courier")
+line.p2out <- ggplot(repetition, aes(x = line_rep, y = total.uses)) + 
+  geom_point(alpha = 0.7) + scale_x_continuous(expand = c(0.005,0.15), limits = c(0, 80)) + theme_classic() +
+  scale_y_continuous(expand = c(0.005,0.15), limits = c(0, 99)) + 
+  labs(y = "total uses", x = "line repetition\n(total lines / unique lines)") + 
+  theme(text = element_text(family = "Courier"),
+        panel.grid.major = element_line(colour = "lightgrey")) +
+  annotate("text", x = 9, y = 39, label = "(two points)", size = 1.9, family = "Courier")
+line.p2outlm <- line.p2out + geom_smooth(method = "lm", formula = y ~ x, se = F)
+
+if(method == "Linear"){
+  (line.p2outlm | line.p1outl) + plot_layout(widths = unit(c(12, 12), "null"))
+}else{
+  (line.p2out | line.p1outl) + plot_layout(widths = unit(c(12, 12), "null")) 
+}
+}
+```
+
+
+```{r}
+create.rep.graph(type = "Word Repetition (remove outlier)", method = "Linear")
+
+```
+
+
+
+```{r}
+create.outlier.word.rep("Linear")
+
+create.no.outlier.word.rep("Linear")
+
+create.no.outlier.line.rep("Linear")
+
+create.outlier.line.rep("None")
+
+```
+
+
+```{r, message = F, echo = F, include = T}
 # counting negative / positive words
 sentiment <- lyrics %>%
   unnest_tokens(word, line) %>%
@@ -87,6 +405,7 @@ sentiment <- lyrics %>%
   # count negative / positive words
   count(word, sentiment, sort = TRUE) %>%
   ungroup()
+sentiment
 
 # plotting top contributors
 sentiment %>%
@@ -1474,10 +1793,10 @@ create.samps.anim <- function(){
   animate(songs.anim, 200, fps = 20)
 }
 
-create.samps.anim()
+# create.samps.anim()
 
-anim_save("discovering_discovery/misc/songs.anim.gif", ani.width= 1000, ani.height=1000)
-include_graphics("discovering_discovery/misc/songs.anim.gif")
+# anim_save("discovering_discovery/misc/songs.anim.gif", ani.width= 1000, ani.height=1000)
+# include_graphics("discovering_discovery/misc/songs.anim.gif")
 
 ```
 
@@ -1739,43 +2058,104 @@ create.type.summary.plot(2009)
 ```
 
 ```{r}
+create.alt.uses.per.year.plot("December 2010")
+```
 
-create.uses.line.plot <- function(year.slide){
+
+```{r}
+create.alt.uses.per.year.plot <- function(peak.selection){
   
-  data <- data.main %>% 
-      group_by(year) %>% 
-      filter(!type == "samples") %>% 
-      mutate(type = str_replace(type, "sampled", "Samples"),
-             type = str_replace(type, "remix", "Remixes"),
-             type = str_replace(type, "cover", "Covers")) %>% 
-      group_by(type, year) %>%  
-      distinct(track, year) %>% 
-      summarize(count = n()) %>% 
-      ungroup() %>% 
-      rbind(tibble(year = rep(2000:2020, 3), type = c(rep("Covers", 21), rep("Remixes", 21), 
-                                    rep("Samples", 21)), count = 0)) %>% 
-      group_by(type) %>% 
-      arrange(year) %>% 
-      mutate(total.type = cumsum(count)) %>% 
-      arrange(desc(count)) %>% 
-      distinct(type, year, .keep_all = T) %>% 
-      ungroup() %>% 
-      mutate(year = as.numeric(year)) %>% 
-      mutate(type = factor(type, levels = c("Samples", "Covers", "Remixes")))
+  peak.selection.year <- if(peak.selection == "March 2005"){"2005"}else{
+                         if(peak.selection == "December 2007"){"2007"}else{
+                         if(peak.selection == "December 2010"){"2010"}else{
+                         if(peak.selection == "May 2013"){"2013"}else{
+                         if(peak.selection == "January 2014"){"2014"}else{
+                         if(peak.selection == "February 2017"){"2017"}}}}}}
   
-  ggplot(data, aes(x = year, y = total.type, color = type)) + 
-    geom_point(size = 2) + geom_line(aes(group = type), size = 1.25) + 
-    geom_vline(aes(xintercept = 2005), color = "red", linetype = "dashed") + theme_classic() + 
-    labs(y = "Count", x = "") + ylim(0, 150) +
+  year.peak <- as.numeric(peak.selection.year)
+  
+  data <- data.main %>%
+     mutate(year = as.numeric(year)) %>% 
+     filter(!type == "samples") %>% 
+     mutate(type = str_replace(type, "sampled", "Samples"),
+            type = str_replace(type, "remix", "Remixes"),
+            type = str_replace(type, "cover", "Covers")) %>% 
+     mutate(type = as.factor(type)) %>% 
+     mutate(type = factor(type, levels = c("Samples", "Covers", "Remixes"))) %>% 
+     group_by(track, artist, year, type) %>% 
+     distinct(track) %>%
+     summarize(n = n()) %>% 
+    filter(year >= 2004)
+  
+  ggplot(data, aes(x = year, y = n, fill = type)) + 
+    geom_bar(position = "stack", stat = "identity", color = "white", size = 0.25) + 
+    theme_classic() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+    labs(y = "credits / year", x = NULL) + 
     theme(text = element_text(family = "Courier"),
-          axis.text.x = element_text(angle = 60, hjust = 1),
-          legend.title = element_blank(),
-          legend.position = "none") +
-    scale_color_manual(values = c("turquoise2", "steelblue1", "turquoise4"))
-  
+          plot.title = element_text(hjust = 0.5, size = 23, face = "bold"),
+          plot.subtitle = element_text(hjust = 0.5, size = 10),
+          plot.caption = element_text(hjust = 1, size = 9, face = "italic"),
+          legend.title = element_text(size = 10),
+          legend.text = element_text(size = 9),
+          axis.title.y = element_text(size = 11),
+          axis.text.x = element_text(size = 9),
+          legend.position = "bottom") + 
+    scale_y_continuous(expand = c(0,0.15), limits = c(0, 24)) +
+    scale_fill_manual(values = c("turquoise2", "steelblue1", "turquoise4"), name = NULL,
+                      breaks = c("Samples", "Covers", "Remixes")) +
+    theme(plot.margin = unit(c(1,1,1,1.5), "cm")) +
+    geom_rect(aes(xmin = year.peak - 0.5, xmax = year.peak + 0.5, ymin = 0, 
+             ymax = (data %>% filter(year == year.peak) %>% nrow())),
+             fill = NA, color = "red", size = 0.4)
+
 }
 
+
 ```
+
+```{r}
+create.uses.per.year.plot <- function(year.slide){
+  
+  data <- data.main %>%
+     mutate(year = as.numeric(year)) %>% 
+     filter(!type == "samples") %>% 
+     mutate(type = str_replace(type, "sampled", "Samples"),
+            type = str_replace(type, "remix", "Remixes"),
+            type = str_replace(type, "cover", "Covers")) %>% 
+     mutate(type = as.factor(type)) %>% 
+     mutate(type = factor(type, levels = c("Samples", "Covers", "Remixes"))) %>% 
+     group_by(track, artist, year, type) %>% 
+     distinct(track) %>%
+     summarize(n = n())
+  
+  ggplot(data, aes(x = year, y = n, fill = type)) + 
+    geom_bar(position = "stack", stat = "identity", color = "white", size = 0.25) + 
+    theme_classic() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+    labs(y = "Credits", x = NULL) + 
+    theme(text = element_text(family = "Courier"),
+          plot.title = element_text(hjust = 0.5, size = 23, face = "bold"),
+          plot.subtitle = element_text(hjust = 0.5, size = 10),
+          plot.caption = element_text(hjust = 1, size = 9, face = "italic"),
+          legend.title = element_text(size = 10),
+          legend.text = element_text(size = 9),
+          axis.title.y = element_text(size = 11),
+          axis.text.x = element_text(size = 9)
+          ) + 
+    scale_y_continuous(expand = c(0,0.15), limits = c(0, 24)) +
+    scale_fill_manual(values = c("turquoise2", "steelblue1", "turquoise4"), name = "Credit type",
+                      breaks = c("Samples", "Covers", "Remixes")) +
+    theme(plot.margin = unit(c(1,1,1,1.5), "cm")) +
+    geom_rect(aes(xmin = year.slide - 0.5, xmax = year.slide + 0.5, ymin = 0, 
+             ymax = (data %>% filter(year == year.slide) %>% nrow())),
+             fill = NA, color = "red", size = 0.4) +
+    geom_label(aes(label = paste0((data %>% filter(year == year.slide) %>% nrow()), " total uses"),
+                   x = 2004, y = 19), 
+               size = 4, family = "Courier", 
+               color = "white", fill = "steelblue")
+
+}
+```
+
 
 
 ```{r}
@@ -1948,7 +2328,8 @@ library(pracma)
 
 
 daft_punk_time_search <- gtrends(keyword = c("Daft Punk"), 
-                                 gprop = c("web"), time = "all")$interest_over_time
+                                 gprop = c("web"), time = "all")$interest_over_time %>% 
+  mutate(date = ymd(date))
 
 daft_punk_topics.time <- function(keyword, time.start.time.end){
   time_trends <- gtrends(keyword = c(keyword), gprop = c("web"), 
@@ -1996,20 +2377,88 @@ peaks
 findpeaks(daft_punk_time_search$hits, minpeakheight = 10)[,c(2,4)]
 daft_punk_time_search
 
-daft_punk_time_search
-ggplot(data = daft_punk_time_search, aes(x = date, y = hits))+
-        geom_line(col = "red") + xlab(NULL) + ylab("Relative Interest") + theme_bw()+
-        geom_area(fill = "steelblue1") + theme_classic() + 
-  labs(title = "'Daft Punk' Google Search Volume",
-       subtitle = "from 2004 to 2020",
-       caption = "Source: Google Trends") +
-  theme(text = element_text(family = "Courier"),
-       plot.title = element_text(hjust = 0.5, size = 20, face = "bold"),
-       plot.subtitle = element_text(hjust = 0.5, size = 12),
-       plot.caption = element_text(hjust = 1, size = 9, face = "italic"),
-       legend.title = element_text(size = 10)
-       ) +
-  scale_y_continuous(expand = c(0,5), limits = c(0, 105))
+daft_punk_time_search <- readRDS("discovering_discovery/scraped_data/daft_punk_time_search.RDS")
+peaks.list <- peaks %>% 
+  group_by(time) %>% 
+  nest() %>% 
+  ungroup() %>% 
+  cbind(date = c("2005-03-01", "2007-12-01", "2010-12-01", 
+                 "2013-05-01", "2014-01-01", "2017-02-01")) %>%  
+  mutate(date = ymd(date)) %>% 
+  left_join(daft_punk_time_search, by = c("date")) %>% 
+  select(data, date, hits) %>% 
+  unnest(cols = data) %>% 
+  group_by(hits, date) %>% 
+  mutate(terms = list(value)) %>% 
+  distinct(date, .keep_all = T) %>% 
+  ungroup() %>% 
+  select(date, hits, terms)
+# peaks.list %>% saveRDS("discovering_discovery/scraped_data/peaks_list.RDS")
+
+peak.dates <- c("2005-03-01", "2007-12-01", "2010-12-01", 
+                "2013-05-01", "2014-01-01", "2017-02-01")
+
+
+daft_punk_time_search <- readRDS("discovering_discovery/scraped_data/daft_punk_time_search.RDS")
+peaks.list <- readRDS("discovering_discovery/scraped_data/peaks_list.RDS")
+
+create.google.trends.plot <- function(peak.selection){
+
+  peak.selection.year <- if(peak.selection == "March 2005"){"2005"}else{
+                         if(peak.selection == "December 2007"){"2007"}else{
+                         if(peak.selection == "December 2010"){"2010"}else{
+                         if(peak.selection == "May 2013"){"2013"}else{
+                         if(peak.selection == "January 2014"){"2014"}else{
+                         if(peak.selection == "February 2017"){"2017"}}}}}}
+  
+  peaks.list <- peaks.list %>% 
+    mutate(selected = map_chr(date, 
+                           ~ if(as.character(format(.,'%Y')) == peak.selection.year){
+                               "red"
+                             }else{
+                               "black"
+                              }))
+  
+  terms.needed <- unlist(peaks.list %>% 
+    mutate(selected = map_chr(date, 
+                           ~ if(as.character(format(.,'%Y')) == peak.selection.year){
+                               "red"
+                             }else{
+                               "black"
+                              })) %>% 
+    filter(selected == "red") %>% 
+    pull(terms))
+  terms.needed <- paste(terms.needed[1], terms.needed[2], terms.needed[3], 
+                        terms.needed[4], terms.needed[5], sep = "
+")
+  
+  p <- ggplot(data = daft_punk_time_search, aes(x = date, y = hits))+
+          geom_line(col = "grey") + xlab(NULL) + ylab("Relative Interest") + theme_bw() +
+          geom_area(fill = "steelblue1") + theme_classic() + 
+    labs(title = "'Daft Punk' Google Search Volume from 2004 to 2020") +
+    theme(text = element_text(family = "Courier"),
+         plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+         plot.subtitle = element_text(hjust = 0.5, size = 12),
+         plot.caption = element_text(hjust = 1, size = 9, face = "italic"),
+         legend.title = element_text(size = 10)) + 
+    geom_point(data = peaks.list, aes(x = date, y = hits, color = selected, shape = selected)) +
+    theme(legend.position = "none") +
+    scale_color_manual(values = c("black", "red")) + 
+    scale_y_continuous(expand = c(0,5), limits = c(0, 105)) + 
+    annotate("label", x = ymd("2006-07-01"), y = 90, label = paste0(peak.selection, ":"), 
+             family = "Courier", padding.size = 0.5, label.padding = unit(0.5, "lines"), 
+             color = "white", fill = "steelblue", size = 4) + 
+    annotate("label", x = ymd("2006-07-01"), y = 70, label = paste0(terms.needed), 
+             family = "Courier", size = 3)
+  p
+}
+
+peak.months <- c("March 2005", "December 2007", "December 2010", 
+                 "May 2013", "January 2014", "February 2017")
+
+
+create.google.trends.plot("January 2014")
+  
 
 ```
 
@@ -2017,6 +2466,7 @@ ggplot(data = daft_punk_time_search, aes(x = date, y = hits))+
 ```{r, eval = F}
 
 library(spotifyr)
+library(corrplot)
 
 Sys.setenv(SPOTIFY_CLIENT_ID = '9ffd8734c372455faf4f66524809478d')
 Sys.setenv(SPOTIFY_CLIENT_SECRET = 'f7d542ebdfa14c318ef9208b877ecd61')
@@ -2047,7 +2497,10 @@ daft1 <- data.main %>%
          total.uses = sampled + remixed + covered)
 
 daft <- daft2 %>% full_join(daft1, by = c("track_name" = "main.song"))
-daft %>% colnames()
+daft %>% saveRDS("discovering_discovery/scraped_data/discovery_song_qualities.RDS")
+
+daft <- readRDS("discovering_discovery/scraped_data/discovery_song_qualities.RDS")
+
 corrplot(cor(daft %>% 
                select(energy, mode, instrumentalness,
                       tempo, duration_ms, key, 
@@ -2056,15 +2509,398 @@ corrplot(cor(daft %>%
                       remixed, covered, sampled, total.uses)), 
          type = "upper", insig = "label_sig")
 
+daft %>% ggplot(aes(x = track_name, y = percent_rank(total.uses))) + geom_col() + 
+  geom_col(alpha = 0.2, aes(y = percent_rank(valence)))
+
+
+
+create.song.comparison.analytics <- function(input1, input2){
+
+  input1 <- "One More Time"
+  input2 <- "Nightvision"
+
+  tracks <- c(input1, input2)
+  filt.daft <- daft %>% filter(track_name %in% tracks)
+  
+  (ggplot(filt.daft, aes(x = track_name, y = energy)) + geom_col(aes(fill = track_name)) + 
+    geom_hline(yintercept = c(0.1860, 0.9110)) + labs(title = "Energy", x = NULL,
+                                                      y = NULL) +
+    scale_fill_manual(values = c("turquoise2", "steelblue1"), name = NULL) +
+    theme(panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "grey", fill = NA),
+          text = element_text(family = "Courier"),
+          axis.text.x = element_blank(),
+          plot.title = element_text(hjust = 0.5, size = 10),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_text(size = 8),
+          legend.position = "bottom") +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) | 
+  
+  ggplot(filt.daft, aes(x = track_name, y = instrumentalness)) + geom_col(aes(fill = track_name)) + 
+    geom_hline(yintercept = c(0, 0.95))  + labs(title = "Instrumentalness", x = NULL,
+                                                y = NULL) +
+    scale_fill_manual(values = c("turquoise2", "steelblue1"), name = NULL) +
+    theme(panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "grey", fill = NA),
+          text = element_text(family = "Courier"),
+          axis.text.x = element_blank(),
+          plot.title = element_text(hjust = 0.5, size = 9),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_text(size = 8),
+          legend.position = "bottom") +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) | 
+    
+  ggplot(filt.daft, aes(x = track_name, y = liveness)) + geom_col(aes(fill = track_name)) + 
+    geom_hline(yintercept = c(0.0293, 0.3580)) + labs(title = "Liveness", x = NULL,
+                                                y = NULL) +
+    scale_fill_manual(values = c("turquoise2", "steelblue1"), name = NULL) +
+    theme(panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "grey", fill = NA),
+          text = element_text(family = "Courier"),
+          axis.text.x = element_blank(),
+          plot.title = element_text(hjust = 0.5, size = 10),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_text(size = 8),
+          legend.position = "bottom") +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) | 
+    
+  ggplot(filt.daft, aes(x = track_name, y = valence)) + geom_col(aes(fill = track_name)) + 
+    geom_hline(yintercept = c(0.1190, 0.963)) + labs(title = "Valence", x = NULL,
+                                                y = NULL) +
+    scale_fill_manual(values = c("turquoise2", "steelblue1"), name = NULL) +
+    theme(panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "grey", fill = NA),
+          text = element_text(family = "Courier"),
+          axis.text.x = element_blank(),
+          plot.title = element_text(hjust = 0.5, size = 10),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_text(size = 8),
+          legend.position = "bottom") +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) | 
+  
+  ggplot(filt.daft, aes(x = track_name, y = danceability)) + geom_col(aes(fill = track_name)) + 
+    geom_hline(yintercept = c(0.491, 0.875)) + labs(title = "Danceability", x = NULL,
+                                                y = NULL) +
+    scale_fill_manual(values = c("turquoise2", "steelblue1"), name = NULL) +
+    theme(panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "grey", fill = NA),
+          text = element_text(family = "Courier"),
+          axis.text.x = element_blank(),
+          plot.title = element_text(hjust = 0.5, size = 9),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_text(size = 8),
+          legend.position = "bottom") +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1)))) /  
+  
+  (ggplot(filt.daft, aes(x = track_name, y = tempo)) + geom_col(aes(fill = track_name)) + 
+    geom_hline(yintercept = c(99.96, 140.88)) + labs(title = "Tempo", x = NULL,
+                                                y = NULL) +
+    scale_fill_manual(values = c("turquoise2", "steelblue1"), name = NULL) +
+    theme(panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "grey", fill = NA),
+          text = element_text(family = "Courier"),
+          axis.text.x = element_blank(),
+          plot.title = element_text(hjust = 0.5, size = 10),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_text(size = 8),
+          legend.position = "bottom") +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) |
+  
+  ggplot(filt.daft, aes(x = track_name, y = acousticness)) + geom_col(aes(fill = track_name)) + 
+    geom_hline(yintercept = c(0.00135, 0.845)) + labs(title = "Acousticness", x = NULL,
+                                                y = NULL) +
+    scale_fill_manual(values = c("turquoise2", "steelblue1"), name = NULL) +
+    theme(panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "grey", fill = NA),
+          text = element_text(family = "Courier"),
+          axis.text.x = element_blank(),
+          plot.title = element_text(hjust = 0.5, size = 9),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_text(size = 8),
+          legend.position = "bottom") +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) | 
+  
+  ggplot(filt.daft, aes(x = track_name, y = speechiness)) + geom_col(aes(fill = track_name)) + 
+    geom_hline(yintercept = c(0.0321, 0.301)) + labs(title = "Speechiness", x = NULL,
+                                                y = NULL) +
+    scale_fill_manual(values = c("turquoise2", "steelblue1"), name = NULL) +
+    theme(panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "grey", fill = NA),
+          text = element_text(family = "Courier"),
+          axis.text.x = element_blank(),
+          plot.title = element_text(hjust = 0.5, size = 9),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_text(size = 8),
+          legend.position = "bottom") +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) |
+    
+  ggplot(filt.daft, aes(x = track_name, y = duration_ms)) + geom_col(aes(fill = track_name)) + 
+    geom_hline(yintercept = c(104466, 600293)) + labs(title = "Duration", x = NULL,
+                                                y = NULL) +
+    scale_fill_manual(values = c("turquoise2", "steelblue1"), name = NULL) +
+    theme(panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "grey", fill = NA),
+          text = element_text(family = "Courier"),
+          axis.text.x = element_blank(),
+          plot.title = element_text(hjust = 0.5, size = 10),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_text(size = 6),
+          legend.position = "bottom") +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) | 
+      
+  ggplot(filt.daft, aes(x = track_name, y = total.uses)) + geom_col(aes(fill = track_name)) + 
+    geom_hline(yintercept = c(14, 91)) + labs(title = "Total Uses", x = NULL,
+                                                y = NULL) +
+    scale_fill_manual(values = c("turquoise2", "steelblue1"), name = NULL) +
+    theme(panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "red", fill = NA),
+          text = element_text(family = "Courier"),
+          axis.text.x = element_blank(),
+          plot.title = element_text(hjust = 0.5, size = 10, face = "bold"),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_text(size = 8),
+          legend.position = "bottom") +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1)))) /  
+    guide_area() + 
+    plot_layout(guides = "collect", heights = unit(c(6, 6, 1), "null")) 
+
+}
+  
+ggplot(filt.daft, aes(x = track_name, y = key)) + geom_col(aes(fill = track_name)) + 
+  geom_hline(yintercept = c(0, 11))
+
+create.song.comparison.analytics(input1 = "One More Time", input2 = "Nightvision")
+
+daft %>% select(track_name, acousticness)
+```
+
+```{r}
+daft <- readRDS("discovering_discovery/scraped_data/discovery_song_qualities.RDS")
+
 daft
 
-library(corrplot)
 
-summary(lm(data = daft, total.uses ~ valence))
 
+
+library(Hmisc)
+
+font <- list(
+  family = "Courier",
+  size = 15,
+  color = "white"
+)
+label <- list(
+  bgcolor = "grey",
+  bordercolor = "transparent",
+  font = font
+)
+
+
+
+
+
+
+
+type = "lm"
+variable = energy
+
+create.reg.plot <- function(variable, type){
+  if(variable == "Energy"){energy.reg(type)}else{
+  if(variable == "Instrumentalness"){instrumentalness.reg(type)}else{
+  if(variable == "Liveness"){liveness.reg(type)}else{
+  if(variable == "Valence"){valence.reg(type)}else{
+  if(variable == "Danceability"){danceability.reg(type)}else{
+  if(variable == "Tempo"){tempo.reg(type)}else{
+  if(variable == "Acousticness"){acousticness.reg(type)}else{
+  if(variable == "Speechiness"){speechiness.reg(type)}else{
+  if(variable == "Duration"){duration.reg(type)}}}}}}}}}
+}
 ```
 
 
+```{r}
+energy.reg <- function(type){
+  if(type == "none"){
+  ggplot(data = daft, aes(x = energy, y = total.uses)) +     
+  geom_point() + labs(y = "Total Uses", x = "Energy") + 
+  theme(text = element_text(family = "Courier"),
+        panel.background = element_blank(),
+        panel.grid.major = element_line(colour = "lightgrey"),
+        panel.border = element_rect(color = "black", fill = NA))
+}else{
+  ggplot(data = daft, aes(x = energy, y = total.uses)) +     
+  geom_point() + labs(y = "Total Uses", x = "Energy") + 
+  theme(text = element_text(family = "Courier"),
+        panel.background = element_blank(),
+        panel.grid.major = element_line(colour = "lightgrey"),
+        panel.border = element_rect(color = "black", fill = NA)) +
+  geom_smooth(method = type, se = F, formula = y ~ x)
+}
+}
+instrumentalness.reg <- function(type){
+  if(type == "none"){
+    ggplot(data = daft, aes(x = instrumentalness, y = total.uses)) +     
+    geom_point() + labs(y = "Total Uses", x = "Instrumentalness") + 
+    theme(text = element_text(family = "Courier"),
+          panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "black", fill = NA))
+  }else{
+    ggplot(data = daft, aes(x = instrumentalness, y = total.uses)) +     
+    geom_point() + labs(y = "Total Uses", x = "Instrumentalness") + 
+    theme(text = element_text(family = "Courier"),
+          panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "black", fill = NA)) +
+    geom_smooth(method = type, se = F, formula = y ~ x)
+}
+}
+liveness.reg <- function(type){
+  if(type == "none"){
+    ggplot(data = daft, aes(x = liveness, y = total.uses)) +     
+    geom_point() + labs(y = "Total Uses", x = "Liveness") + 
+    theme(text = element_text(family = "Courier"),
+          panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "black", fill = NA))
+  }else{
+    ggplot(data = daft, aes(x = liveness, y = total.uses)) +     
+    geom_point() + labs(y = "Total Uses", x = "Liveness") + 
+    theme(text = element_text(family = "Courier"),
+          panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "black", fill = NA)) +
+    geom_smooth(method = type, se = F, formula = y ~ x)
+  }
+}
+valence.reg <- function(type){
+  if(type == "none"){
+    ggplot(data = daft, aes(x = valence, y = total.uses)) +     
+    geom_point() + labs(y = "Total Uses", x = "Valence") + 
+    theme(text = element_text(family = "Courier"),
+          panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "black", fill = NA))
+  }else{
+    ggplot(data = daft, aes(x = valence, y = total.uses)) +     
+    geom_point() + labs(y = "Total Uses", x = "Valence") + 
+    theme(text = element_text(family = "Courier"),
+          panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "black", fill = NA)) +
+    geom_smooth(method = type, se = F, formula = y ~ x)
+  }
+}
+danceability.reg <- function(type){
+  if(type == "none"){
+    ggplot(data = daft, aes(x = danceability, y = total.uses)) +     
+    geom_point() + labs(y = "Total Uses", x = "Danceability") + 
+    theme(text = element_text(family = "Courier"),
+          panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "black", fill = NA))
+  }else{
+    ggplot(data = daft, aes(x = danceability, y = total.uses)) +     
+    geom_point() + labs(y = "Total Uses", x = "Danceability") + 
+    theme(text = element_text(family = "Courier"),
+          panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "black", fill = NA)) +
+    geom_smooth(method = type, se = F, formula = y ~ x)
+  }
+}
+tempo.reg <- function(type){
+    if(type == "none"){
+    ggplot(data = daft, aes(x = tempo, y = total.uses)) +     
+    geom_point() + labs(y = "Total Uses", x = "Tempo") + 
+    theme(text = element_text(family = "Courier"),
+          panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "black", fill = NA))
+  }else{
+    ggplot(data = daft, aes(x = tempo, y = total.uses)) +     
+    geom_point() + labs(y = "Total Uses", x = "Tempo") + 
+    theme(text = element_text(family = "Courier"),
+          panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "black", fill = NA)) +
+    geom_smooth(method = type, se = F, formula = y ~ x)
+  }
+}
+acousticness.reg <- function(type){
+  if(type == "none"){
+    ggplot(data = daft, aes(x = acousticness, y = total.uses)) +     
+    geom_point() + labs(y = "Total Uses", x = "Acousticness") + 
+    theme(text = element_text(family = "Courier"),
+          panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "black", fill = NA))
+  }else{
+    ggplot(data = daft, aes(x = acousticness, y = total.uses)) +     
+    geom_point() + labs(y = "Total Uses", x = "Acousticness") + 
+    theme(text = element_text(family = "Courier"),
+          panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "black", fill = NA)) +
+    geom_smooth(method = type, se = F, formula = y ~ x)
+  }
+}
+speechiness.reg <- function(type){
+  if(type == "none"){
+    ggplot(data = daft, aes(x = speechiness, y = total.uses)) +     
+    geom_point() + labs(y = "Total Uses", x = "Speechiness") + 
+    theme(text = element_text(family = "Courier"),
+          panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "black", fill = NA))
+  }else{
+    ggplot(data = daft, aes(x = speechiness, y = total.uses)) +     
+    geom_point() + labs(y = "Total Uses", x = "Speechiness") + 
+    theme(text = element_text(family = "Courier"),
+          panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "black", fill = NA)) +
+    geom_smooth(method = type, se = F, formula = y ~ x)
+  }
+}
+duration.reg <- function(type){
+  if(type == "none"){
+    ggplot(data = daft, aes(x = duration_ms, y = total.uses)) +     
+    geom_point() + labs(y = "Total Uses", x = "Duration (ms)") + 
+    theme(text = element_text(family = "Courier"),
+          panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "black", fill = NA))
+  }else{
+    ggplot(data = daft, aes(x = duration_ms, y = total.uses)) +     
+    geom_point() + labs(y = "Total Uses", x = "Duration (ms)") + 
+    theme(text = element_text(family = "Courier"),
+          panel.background = element_blank(),
+          panel.grid.major = element_line(colour = "lightgrey"),
+          panel.border = element_rect(color = "black", fill = NA)) +
+    geom_smooth(method = type, se = F, formula = y ~ x)
+  }
+}
+
+```
+
+```{r}
+create.reg.plot(variable = "Energy", type = "loess")
+
+ifelse(type == "Linear", type <- "lm", 
+       ifelse(type == "Loess", type <- "loess", "none"))
+
+```
 
 
 
