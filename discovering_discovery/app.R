@@ -24,6 +24,11 @@ all.14.tracks <- c("One More Time", "Aerodynamic", "Digital Love", "Harder, Bett
                    "Something About Us", "Voyager", "Veridis Quo",
                    "Short Circuit", "Face to Face", "Too Long")
 
+all.14.tracks.mod <- c("One More Time", "Aerodynamic", "Digital Love", "Harder, Better,...",
+                   "Crescendolls", "Nightvision", "Superheroes", "High Life", 
+                   "Something About Us", "Voyager", "Veridis Quo",
+                   "Short Circuit", "Face to Face", "Too Long")
+
 create_ranks.graph <- function(year.slide){
     ranks.graph <- ggplot(total_ranks %>% filter(year == year.slide), 
                       aes(rank, group = main.song, 
@@ -59,7 +64,7 @@ create.non.ranked.plot <- function(year.slide){
     total_ranks.plot <- total_ranks %>%
         mutate(main.song = str_replace(main.song, "Harder, Better, Faster, Stronger", 
                                        "Harder, Better,...")) %>% 
-        mutate(main.song = factor(main.song, levels = all.14.tracks))
+        mutate(main.song = factor(main.song, levels = all.14.tracks.mod))
     
     ggplot(total_ranks.plot %>% filter(year == year.slide), aes(x = main.song, y = total.all)) + 
         geom_col(fill = "lightblue2", color = "grey") + labs(x = "", y = "Cumulative Uses") + 

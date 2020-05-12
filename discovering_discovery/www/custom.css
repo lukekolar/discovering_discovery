@@ -8,6 +8,11 @@
   font-family: “Courier New”, Courier, monospace;
 }
 
+p {
+  font-family: “Courier New”, Courier, monospace;
+  font-size: 13px;
+}
+
 h2 {
   font-family: “Courier New”, Courier, monospace;
 }
@@ -17,7 +22,34 @@ h3 {
   font-size: 14px;
 }
 
-# adjusting slider for ranks graph 
+.irs-grid {
+  font-family: “Courier New”, Courier, monospace;
+}
 
+.irs-min {
+  font-family: “Courier New”, Courier, monospace;
+}
 
+.irs-single {
+  font-family: “Courier New”, Courier, monospace;
+}
 
+.irs-max {
+  font-family: “Courier New”, Courier, monospace;
+}
+
+.control-label {
+  font-family: “Courier New”, Courier, monospace;
+}
+
+.item {
+  font-family: “Courier New”, Courier, monospace;
+}
+
+.selectize-dropdown {
+  font-family: “Courier New”, Courier, monospace;
+}
+
+.help-block {
+  font-family: “Courier New”, Courier, monospace;
+}
